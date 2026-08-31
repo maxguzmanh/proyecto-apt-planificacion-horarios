@@ -1,5 +1,8 @@
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
+
+from .forms import HorarioForm
 
 from academico.models import (
     CentroTutorial,
@@ -272,4 +275,114 @@ def cargar_semestres(request):
     return JsonResponse(
         list(semestres),
         safe=False,
+    )
+
+
+def nueva_asignacion(request):
+
+    periodo_id = request.GET.get("periodo")
+    semestre_id = request.GET.get("semestre")
+    sede_id = request.GET.get("sede")
+
+    periodo = get_object_or_404(
+        PeriodoAcademico,
+        pk=periodo_id,
+    )
+
+    semestre = get_object_or_404(
+        Semestre,
+        pk=semestre_id,
+        periodo=periodo,
+    )
+
+    sede = get_object_or_404(
+        Sede,
+        pk=sede_id,
+    )
+
+    if request.method == "POST":
+
+        form = HorarioForm(
+            request.POST,
+            semestre=semestre,
+            sede=sede,
+            periodo=periodo,
+        )
+
+        if form.is_valid():
+
+            horario = form.save(commit=False)
+
+            # El periodo no viene en el formulario,
+            # por eso lo asignamos manualmente.
+            horario.periodo = periodo
+
+            try:
+                # IMPORTANTE:
+                # ejecutamos nuevamente todas las validaciones
+                # del modelo con el periodo ya asignado.
+                horario.full_clean()
+
+            except ValidationError as error:
+
+                # Si clean() devolvió errores asociados
+                # a campos específicos.
+                if hasattr(error, "message_dict"):
+
+                    for campo, errores in error.message_dict.items():
+
+                        if campo in form.fields:
+                            campo_formulario = campo
+                        else:
+                            campo_formulario = None
+
+                        for mensaje in errores:
+                            form.add_error(
+                                campo_formulario,
+                                mensaje,
+                            )
+
+                else:
+
+                    form.add_error(
+                        None,
+                        error,
+                    )
+
+            else:
+
+                # Solo se guarda si full_clean()
+                # terminó sin ningún conflicto.
+                horario.save()
+
+                return redirect(
+                    request.POST.get(
+                        "volver_a",
+                        "/",
+                    )
+                )
+
+    else:
+
+        form = HorarioForm(
+            semestre=semestre,
+            sede=sede,
+            periodo=periodo,
+        )
+
+    context = {
+        "form": form,
+        "periodo": periodo,
+        "semestre": semestre,
+        "sede": sede,
+        "volver_a": request.META.get(
+            "HTTP_REFERER",
+            "/",
+        ),
+    }
+
+    return render(
+        request,
+        "horarios/nueva_asignacion.html",
+        context,
     )

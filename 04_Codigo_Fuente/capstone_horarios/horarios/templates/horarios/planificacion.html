@@ -151,12 +151,20 @@ Planificación de Horarios
 
             </div>
 
-        </div>
 
-    </div>
+            <a
+                href="{% url 'nueva_asignacion' %}?periodo={{ periodo.id }}&semestre={{ semestre.id }}&sede={{ sede.id }}"
+                class="btn btn-primary"
+            >
+                + Nueva asignación
+            </a>
+
+                </div>
+
+            </div>
 
 
-    <div class="card-body p-0">
+         <div class="card-body p-0">
 
         <div class="calendar-scroll">
 
