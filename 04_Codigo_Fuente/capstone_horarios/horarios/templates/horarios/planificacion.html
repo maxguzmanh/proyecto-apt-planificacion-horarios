@@ -212,61 +212,62 @@ Planificación de Horarios
                 </div>
 
 
-                <!-- Columnas de cada día -->
+            <!-- Columnas de cada día -->
 
-                {% for dia in dias_calendario %}
+            {% for dia in dias_calendario %}
 
-                    <div
-                        class="calendar-day-column"
-                        style="height: {{ altura_calendario }}px;"
-                    >
+                <div
+                    class="calendar-day-column"
+                    style="height: {{ altura_calendario }}px;"
+                >
 
-                        {% for bloque in dia.horarios %}
+                    {% for bloque in dia.horarios %}
 
-                            <div
-                                class="calendar-event"
-                                style="
-                                    top: {{ bloque.top }}px;
-                                    height: {{ bloque.altura }}px;
-                                "
-                            >
+                        <a
+                            href="{% url 'editar_asignacion' bloque.horario.id %}?volver_a={{ request.get_full_path|urlencode }}"
+                            class="calendar-event"
+                            style="
+                                top: {{ bloque.top }}px;
+                                height: {{ bloque.altura }}px;
+                            "
+                        >
 
-                                <div class="calendar-event-title">
-                                    {{ bloque.horario.asignatura.nombre }}
-                                </div>
+                            <div class="calendar-event-title">
+                                {{ bloque.horario.asignatura.nombre }}
+                            </div>
 
-                                <div class="calendar-event-time">
+                            <div class="calendar-event-time">
 
-                                    {{ bloque.horario.hora_inicio|time:"H:i" }}
-                                    -
-                                    {{ bloque.horario.hora_fin|time:"H:i" }}
-
-                                </div>
-
-                                <div class="calendar-event-info">
-                                    {{ bloque.horario.profesor }}
-                                </div>
-
-                                <div class="calendar-event-info">
-                                    {{ bloque.horario.aula.nombre }}
-                                </div>
+                                {{ bloque.horario.hora_inicio|time:"H:i" }}
+                                -
+                                {{ bloque.horario.hora_fin|time:"H:i" }}
 
                             </div>
 
-                        {% empty %}
+                            <div class="calendar-event-info">
+                                {{ bloque.horario.profesor }}
+                            </div>
 
-                        {% endfor %}
+                            <div class="calendar-event-info">
+                                {{ bloque.horario.aula.nombre }}
+                            </div>
 
-                    </div>
+                        </a>
 
-                {% endfor %}
+                    {% empty %}
+
+                    {% endfor %}
+
+                </div>
+
+            {% endfor %}
 
             </div>
 
-        </div>
+            </div>
 
-    </div>
+            </div>
 
-</div>
+            </div>
 
-{% endblock %}
+            {% endblock %}

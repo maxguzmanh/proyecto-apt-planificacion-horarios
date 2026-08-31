@@ -1,0 +1,101 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+Eliminar asignación
+{% endblock %}
+
+
+{% block content %}
+
+<div class="row justify-content-center">
+
+    <div class="col-lg-7">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-5">
+
+                <h1 class="h3 mb-3">
+                    Eliminar asignación
+                </h1>
+
+                <p class="text-secondary">
+                    ¿Está seguro de que desea eliminar este horario?
+                </p>
+
+
+                <div class="border rounded p-3 mb-4">
+
+                    <div class="fw-semibold mb-2">
+                        {{ horario.asignatura.nombre }}
+                    </div>
+
+                    <div class="text-secondary">
+
+                        {{ horario.get_dia_display }}
+
+                        ·
+
+                        {{ horario.hora_inicio|time:"H:i" }}
+                        -
+                        {{ horario.hora_fin|time:"H:i" }}
+
+                    </div>
+
+                    <div class="text-secondary">
+                        {{ horario.profesor }}
+                    </div>
+
+                    <div class="text-secondary">
+                        {{ horario.aula.nombre }}
+                    </div>
+
+                </div>
+
+
+                <div class="alert alert-warning">
+                    Esta acción eliminará permanentemente
+                    la asignación del horario.
+                </div>
+
+
+                <form method="POST">
+
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="volver_a"
+                        value="{{ volver_a }}"
+                    >
+
+
+                    <div class="d-flex justify-content-end gap-2">
+
+                        <a
+                            href="{{ volver_a }}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancelar
+                        </a>
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger"
+                        >
+                            Sí, eliminar
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

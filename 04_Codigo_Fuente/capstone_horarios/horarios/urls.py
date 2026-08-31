@@ -14,6 +14,16 @@ urlpatterns = [
         views.nueva_asignacion,
         name="nueva_asignacion",
     ),
+    path(
+        "planificacion/editar/<int:horario_id>/",
+        views.editar_asignacion,
+        name="editar_asignacion",
+    ),
+    path(
+        "planificacion/eliminar/<int:horario_id>/",
+        views.eliminar_asignacion,
+        name="eliminar_asignacion",
+    ),
     # Selects dependientes
     path(
         "ajax/sedes/",

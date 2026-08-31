@@ -1,0 +1,290 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+Editar asignación
+{% endblock %}
+
+
+{% block content %}
+
+<div class="row justify-content-center">
+
+    <div class="col-lg-8">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <div>
+
+                <h1 class="h2 fw-semibold">
+                    Editar asignación
+                </h1>
+
+                <p class="text-secondary mb-0">
+                    Modifique los datos del horario seleccionado.
+                </p>
+
+            </div>
+
+            <a
+                href="{{ volver_a }}"
+                class="btn btn-outline-secondary"
+            >
+                Volver
+            </a>
+
+        </div>
+
+
+        <!-- Información académica -->
+
+        <div class="card shadow-sm border-0 mb-4">
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-4">
+
+                        <small class="text-secondary">
+                            Sede
+                        </small>
+
+                        <div class="fw-semibold">
+                            {{ sede.nombre }}
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <small class="text-secondary">
+                            Periodo
+                        </small>
+
+                        <div class="fw-semibold">
+                            {{ periodo.nombre }}
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <small class="text-secondary">
+                            Semestre
+                        </small>
+
+                        <div class="fw-semibold">
+                            Semestre {{ semestre.numero }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Formulario -->
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-body p-4">
+
+                <form method="POST">
+
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="volver_a"
+                        value="{{ volver_a }}"
+                    >
+
+
+                    {% if form.non_field_errors %}
+
+                        <div class="alert alert-danger">
+
+                            {{ form.non_field_errors }}
+
+                        </div>
+
+                    {% endif %}
+
+
+                    <!-- Asignatura -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Asignatura
+                        </label>
+
+                        {{ form.asignatura }}
+
+                        {% for error in form.asignatura.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- Profesor -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Profesor
+                        </label>
+
+                        {{ form.profesor }}
+
+                        {% for error in form.profesor.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- Aula -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Aula
+                        </label>
+
+                        {{ form.aula }}
+
+                        {% for error in form.aula.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- Día -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Día
+                        </label>
+
+                        {{ form.dia }}
+
+                        {% for error in form.dia.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- Horas -->
+
+                    <div class="row">
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Hora inicio
+                            </label>
+
+                            {{ form.hora_inicio }}
+
+                            {% for error in form.hora_inicio.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label class="form-label">
+                                Hora término
+                            </label>
+
+                            {{ form.hora_fin }}
+
+                            {% for error in form.hora_fin.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+
+                    <hr>
+
+
+                    <div class="d-flex justify-content-between">
+
+                        <a
+                            href="{% url 'eliminar_asignacion' horario.id %}?volver_a={{ volver_a|urlencode }}"
+                            class="btn btn-outline-danger"
+                        >
+                            Eliminar
+                        </a>
+
+
+                        <div class="d-flex gap-2">
+
+                            <a
+                                href="{{ volver_a }}"
+                                class="btn btn-outline-secondary"
+                            >
+                                Cancelar
+                            </a>
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                Guardar cambios
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

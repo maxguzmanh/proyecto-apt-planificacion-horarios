@@ -1,8 +1,6 @@
-from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse
 from django.core.exceptions import ValidationError
-
-from .forms import HorarioForm
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 
 from academico.models import (
     CentroTutorial,
@@ -13,14 +11,25 @@ from academico.models import (
     Semestre,
 )
 
+from .forms import HorarioForm
 from .models import Horario
+
+# ==========================================================
+# CONFIGURACIÓN DEL CALENDARIO
+# ==========================================================
 
 HORA_INICIO_CALENDARIO = 6
 HORA_FIN_CALENDARIO = 22
 PIXELES_POR_MINUTO = 0.75
 
 
+# ==========================================================
+# PANTALLA DE INICIO
+# ==========================================================
+
+
 def inicio(request):
+
     context = {
         "centros": CentroTutorial.objects.all(),
     }
@@ -31,11 +40,10 @@ def inicio(request):
         context,
     )
 
-    return render(
-        request,
-        "horarios/inicio.html",
-        context,
-    )
+
+# ==========================================================
+# PLANIFICACIÓN / CALENDARIO SEMANAL
+# ==========================================================
 
 
 def planificacion(request):
@@ -46,6 +54,10 @@ def planificacion(request):
     carrera_id = request.GET.get("carrera")
     periodo_id = request.GET.get("periodo")
     semestre_id = request.GET.get("semestre")
+
+    # ------------------------------------------------------
+    # Validamos la estructura académica seleccionada
+    # ------------------------------------------------------
 
     centro = get_object_or_404(
         CentroTutorial,
@@ -82,6 +94,10 @@ def planificacion(request):
         periodo=periodo,
     )
 
+    # ------------------------------------------------------
+    # Obtenemos los horarios correspondientes
+    # ------------------------------------------------------
+
     horarios = list(
         Horario.objects.filter(
             periodo=periodo,
@@ -98,6 +114,10 @@ def planificacion(request):
         )
     )
 
+    # ------------------------------------------------------
+    # Días mostrados en el calendario
+    # ------------------------------------------------------
+
     dias = [
         ("LU", "Lunes"),
         ("MA", "Martes"),
@@ -112,12 +132,17 @@ def planificacion(request):
 
     altura_calendario = int((fin_calendario - inicio_calendario) * PIXELES_POR_MINUTO)
 
+    # ------------------------------------------------------
+    # Construcción de las etiquetas de las horas
+    # ------------------------------------------------------
+
     horas_calendario = []
 
     for hora in range(
         HORA_INICIO_CALENDARIO,
         HORA_FIN_CALENDARIO,
     ):
+
         minutos = hora * 60
 
         top = int((minutos - inicio_calendario) * PIXELES_POR_MINUTO)
@@ -128,6 +153,10 @@ def planificacion(request):
                 "top": top,
             }
         )
+
+    # ------------------------------------------------------
+    # Construcción de los bloques del calendario
+    # ------------------------------------------------------
 
     dias_calendario = []
 
@@ -200,7 +229,13 @@ def planificacion(request):
     )
 
 
+# ==========================================================
+# SELECTS DEPENDIENTES - AJAX
+# ==========================================================
+
+
 def cargar_sedes(request):
+
     centro_id = request.GET.get("centro")
 
     sedes = Sede.objects.filter(centro_tutorial_id=centro_id).values(
@@ -215,6 +250,7 @@ def cargar_sedes(request):
 
 
 def cargar_facultades(request):
+
     sede_id = request.GET.get("sede")
 
     facultades = Facultad.objects.filter(sede_id=sede_id).values(
@@ -229,6 +265,7 @@ def cargar_facultades(request):
 
 
 def cargar_carreras(request):
+
     facultad_id = request.GET.get("facultad")
 
     carreras = Carrera.objects.filter(facultad_id=facultad_id).values(
@@ -243,6 +280,7 @@ def cargar_carreras(request):
 
 
 def cargar_periodos(request):
+
     carrera_id = request.GET.get("carrera")
 
     periodos = (
@@ -261,6 +299,7 @@ def cargar_periodos(request):
 
 
 def cargar_semestres(request):
+
     carrera_id = request.GET.get("carrera")
     periodo_id = request.GET.get("periodo")
 
@@ -276,6 +315,11 @@ def cargar_semestres(request):
         list(semestres),
         safe=False,
     )
+
+
+# ==========================================================
+# NUEVA ASIGNACIÓN
+# ==========================================================
 
 
 def nueva_asignacion(request):
@@ -300,6 +344,9 @@ def nueva_asignacion(request):
         pk=sede_id,
     )
 
+    # Dirección a la que volveremos después de guardar.
+    volver_a = request.POST.get("volver_a") or request.META.get("HTTP_REFERER") or "/"
+
     if request.method == "POST":
 
         form = HorarioForm(
@@ -313,30 +360,26 @@ def nueva_asignacion(request):
 
             horario = form.save(commit=False)
 
-            # El periodo no viene en el formulario,
-            # por eso lo asignamos manualmente.
+            # Periodo no aparece como campo editable
+            # en el formulario.
             horario.periodo = periodo
 
             try:
-                # IMPORTANTE:
-                # ejecutamos nuevamente todas las validaciones
-                # del modelo con el periodo ya asignado.
+
+                # Ejecutamos explícitamente las validaciones
+                # del modelo antes de guardar.
                 horario.full_clean()
 
             except ValidationError as error:
 
-                # Si clean() devolvió errores asociados
-                # a campos específicos.
                 if hasattr(error, "message_dict"):
 
                     for campo, errores in error.message_dict.items():
 
-                        if campo in form.fields:
-                            campo_formulario = campo
-                        else:
-                            campo_formulario = None
+                        campo_formulario = campo if campo in form.fields else None
 
                         for mensaje in errores:
+
                             form.add_error(
                                 campo_formulario,
                                 mensaje,
@@ -351,16 +394,9 @@ def nueva_asignacion(request):
 
             else:
 
-                # Solo se guarda si full_clean()
-                # terminó sin ningún conflicto.
                 horario.save()
 
-                return redirect(
-                    request.POST.get(
-                        "volver_a",
-                        "/",
-                    )
-                )
+                return redirect(volver_a)
 
     else:
 
@@ -375,14 +411,136 @@ def nueva_asignacion(request):
         "periodo": periodo,
         "semestre": semestre,
         "sede": sede,
-        "volver_a": request.META.get(
-            "HTTP_REFERER",
-            "/",
-        ),
+        "volver_a": volver_a,
     }
 
     return render(
         request,
         "horarios/nueva_asignacion.html",
+        context,
+    )
+
+
+# ==========================================================
+# EDITAR ASIGNACIÓN
+# ==========================================================
+
+
+def editar_asignacion(request, horario_id):
+
+    horario = get_object_or_404(
+        Horario,
+        pk=horario_id,
+    )
+
+    periodo = horario.periodo
+    semestre = horario.asignatura.semestre
+    sede = horario.aula.sede
+
+    volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
+
+    if request.method == "POST":
+
+        form = HorarioForm(
+            request.POST,
+            instance=horario,
+            semestre=semestre,
+            sede=sede,
+            periodo=periodo,
+        )
+
+        if form.is_valid():
+
+            horario_editado = form.save(commit=False)
+
+            horario_editado.periodo = periodo
+
+            try:
+
+                # Volvemos a ejecutar las reglas de negocio
+                # antes de guardar los cambios.
+                horario_editado.full_clean()
+
+            except ValidationError as error:
+
+                if hasattr(error, "message_dict"):
+
+                    for campo, errores in error.message_dict.items():
+
+                        campo_formulario = campo if campo in form.fields else None
+
+                        for mensaje in errores:
+
+                            form.add_error(
+                                campo_formulario,
+                                mensaje,
+                            )
+
+                else:
+
+                    form.add_error(
+                        None,
+                        error,
+                    )
+
+            else:
+
+                horario_editado.save()
+
+                return redirect(volver_a)
+
+    else:
+
+        form = HorarioForm(
+            instance=horario,
+            semestre=semestre,
+            sede=sede,
+            periodo=periodo,
+        )
+
+    context = {
+        "form": form,
+        "horario": horario,
+        "periodo": periodo,
+        "semestre": semestre,
+        "sede": sede,
+        "volver_a": volver_a,
+    }
+
+    return render(
+        request,
+        "horarios/editar_asignacion.html",
+        context,
+    )
+
+
+# ==========================================================
+# ELIMINAR ASIGNACIÓN
+# ==========================================================
+
+
+def eliminar_asignacion(request, horario_id):
+
+    horario = get_object_or_404(
+        Horario,
+        pk=horario_id,
+    )
+
+    volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
+
+    if request.method == "POST":
+
+        horario.delete()
+
+        return redirect(volver_a)
+
+    context = {
+        "horario": horario,
+        "volver_a": volver_a,
+    }
+
+    return render(
+        request,
+        "horarios/eliminar_asignacion.html",
         context,
     )
