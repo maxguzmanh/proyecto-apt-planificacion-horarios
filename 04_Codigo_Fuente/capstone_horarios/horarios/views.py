@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import (
     login_required,
     permission_required,
@@ -428,6 +429,11 @@ def nueva_asignacion(request):
 
                 horario.save()
 
+                messages.success(
+                    request,
+                    "Horario creado correctamente.",
+                )
+
                 return redirect(volver_a)
 
     else:
@@ -522,6 +528,11 @@ def editar_asignacion(request, horario_id):
 
                 horario_editado.save()
 
+                messages.success(
+                    request,
+                    "Horario actualizado correctamente.",
+                )
+
                 return redirect(volver_a)
 
     else:
@@ -571,6 +582,11 @@ def eliminar_asignacion(request, horario_id):
     if request.method == "POST":
 
         horario.delete()
+
+        messages.success(
+            request,
+            "Horario eliminado correctamente.",
+        )
 
         return redirect(volver_a)
 
