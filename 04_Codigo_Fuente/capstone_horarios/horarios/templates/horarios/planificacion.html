@@ -35,6 +35,10 @@ Planificación de Horarios
 </div>
 
 
+<!-- ==================================================
+     RESUMEN DE LA SELECCIÓN ACADÉMICA
+     ================================================== -->
+
 <div class="card shadow-sm border-0 mb-4">
 
     <div class="card-body">
@@ -42,6 +46,7 @@ Planificación de Horarios
         <div class="row g-3">
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Centro Tutorial
                 </small>
@@ -49,10 +54,12 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     {{ centro.nombre }}
                 </div>
+
             </div>
 
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Sede
                 </small>
@@ -60,10 +67,12 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     {{ sede.nombre }}
                 </div>
+
             </div>
 
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Facultad
                 </small>
@@ -71,10 +80,12 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     {{ facultad.nombre }}
                 </div>
+
             </div>
 
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Carrera
                 </small>
@@ -82,10 +93,12 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     {{ carrera.nombre }}
                 </div>
+
             </div>
 
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Periodo Académico
                 </small>
@@ -93,10 +106,12 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     {{ periodo.nombre }}
                 </div>
+
             </div>
 
 
             <div class="col-md-4">
+
                 <small class="text-secondary">
                     Semestre
                 </small>
@@ -104,6 +119,7 @@ Planificación de Horarios
                 <div class="fw-semibold">
                     Semestre {{ semestre.numero }}
                 </div>
+
             </div>
 
         </div>
@@ -113,96 +129,133 @@ Planificación de Horarios
 </div>
 
 
+<!-- ==================================================
+     CALENDARIO SEMANAL
+     ================================================== -->
+
 <div class="card shadow-sm border-0">
 
     <div class="card-header bg-transparent py-3">
 
-        <h2 class="h5 mb-0">
-            Horarios registrados
-        </h2>
+        <div class="d-flex justify-content-between align-items-center">
+
+            <div>
+
+                <h2 class="h5 mb-1">
+                    Horario semanal
+                </h2>
+
+                <small class="text-secondary">
+                    Distribución de asignaturas durante la semana.
+                </small>
+
+            </div>
+
+        </div>
 
     </div>
 
 
     <div class="card-body p-0">
 
-        {% if horarios %}
+        <div class="calendar-scroll">
 
-        <div class="table-responsive">
+            <div
+                class="weekly-calendar"
+                style="--calendar-height: {{ altura_calendario }}px;"
+            >
 
-            <table class="table table-hover align-middle mb-0">
+                <!-- Esquina superior izquierda -->
 
-                <thead>
-
-                    <tr>
-
-                        <th>Asignatura</th>
-                        <th>Profesor</th>
-                        <th>Aula</th>
-                        <th>Día</th>
-                        <th>Hora inicio</th>
-                        <th>Hora término</th>
-
-                    </tr>
-
-                </thead>
+                <div class="calendar-corner">
+                    Hora
+                </div>
 
 
-                <tbody>
+                <!-- Nombres de los días -->
 
-                    {% for horario in horarios %}
+                {% for dia in dias_calendario %}
 
-                    <tr>
+                    <div class="calendar-day-header">
+                        {{ dia.nombre }}
+                    </div>
 
-                        <td>
-                            {{ horario.asignatura.nombre }}
-                        </td>
+                {% endfor %}
 
-                        <td>
-                            {{ horario.profesor }}
-                        </td>
 
-                        <td>
-                            {{ horario.aula.nombre }}
-                        </td>
+                <!-- Columna izquierda con las horas -->
 
-                        <td>
-                            {{ horario.get_dia_display }}
-                        </td>
+                <div
+                    class="calendar-hours"
+                    style="height: {{ altura_calendario }}px;"
+                >
 
-                        <td>
-                            {{ horario.hora_inicio|time:"H:i" }}
-                        </td>
+                    {% for hora in horas_calendario %}
 
-                        <td>
-                            {{ horario.hora_fin|time:"H:i" }}
-                        </td>
-
-                    </tr>
+                        <div
+                            class="calendar-hour-label"
+                            style="top: {{ hora.top }}px;"
+                        >
+                            {{ hora.texto }}
+                        </div>
 
                     {% endfor %}
 
-                </tbody>
+                </div>
 
-            </table>
+
+                <!-- Columnas de cada día -->
+
+                {% for dia in dias_calendario %}
+
+                    <div
+                        class="calendar-day-column"
+                        style="height: {{ altura_calendario }}px;"
+                    >
+
+                        {% for bloque in dia.horarios %}
+
+                            <div
+                                class="calendar-event"
+                                style="
+                                    top: {{ bloque.top }}px;
+                                    height: {{ bloque.altura }}px;
+                                "
+                            >
+
+                                <div class="calendar-event-title">
+                                    {{ bloque.horario.asignatura.nombre }}
+                                </div>
+
+                                <div class="calendar-event-time">
+
+                                    {{ bloque.horario.hora_inicio|time:"H:i" }}
+                                    -
+                                    {{ bloque.horario.hora_fin|time:"H:i" }}
+
+                                </div>
+
+                                <div class="calendar-event-info">
+                                    {{ bloque.horario.profesor }}
+                                </div>
+
+                                <div class="calendar-event-info">
+                                    {{ bloque.horario.aula.nombre }}
+                                </div>
+
+                            </div>
+
+                        {% empty %}
+
+                        {% endfor %}
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
 
         </div>
-
-        {% else %}
-
-        <div class="text-center py-5">
-
-            <h3 class="h5">
-                No existen horarios registrados
-            </h3>
-
-            <p class="text-secondary mb-0">
-                Todavía no hay asignaciones para este periodo y semestre.
-            </p>
-
-        </div>
-
-        {% endif %}
 
     </div>
 

@@ -13,3 +13,148 @@ body {
 .navbar-brand {
     letter-spacing: 0.2px;
 }
+
+/* ==================================================
+   CALENDARIO SEMANAL
+   ================================================== */
+
+.calendar-scroll {
+    overflow-x: auto;
+}
+
+
+.weekly-calendar {
+    display: grid;
+
+    grid-template-columns:
+        75px repeat(6, minmax(150px, 1fr));
+
+    grid-template-rows:
+        52px var(--calendar-height);
+
+    min-width: 1050px;
+}
+
+
+/* Esquina superior */
+
+.calendar-corner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 600;
+
+    border-right: 1px solid rgba(128, 128, 128, 0.25);
+    border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+
+/* Nombre del día */
+
+.calendar-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 600;
+
+    border-right: 1px solid rgba(128, 128, 128, 0.25);
+    border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+
+/* Columna izquierda con las horas */
+
+.calendar-hours {
+    position: relative;
+
+    border-right: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+
+.calendar-hour-label {
+    position: absolute;
+
+    right: 12px;
+
+    transform: translateY(-50%);
+
+    font-size: 0.8rem;
+
+    color: #8c8c8c;
+}
+
+
+/* Columnas de cada día */
+
+.calendar-day-column {
+    position: relative;
+
+    border-right: 1px solid rgba(128, 128, 128, 0.25);
+
+    background-image:
+        repeating-linear-gradient(to bottom,
+            transparent,
+            transparent 44px,
+            rgba(128, 128, 128, 0.20) 45px);
+}
+
+
+/* Bloque de una clase */
+
+.calendar-event {
+    position: absolute;
+
+    left: 6px;
+    right: 6px;
+
+    padding: 8px 10px;
+
+    background-color: #0d6efd;
+    color: white;
+
+    border-radius: 7px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.20);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+
+.calendar-event:hover {
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.30);
+
+    z-index: 10;
+}
+
+
+.calendar-event-title {
+    font-weight: 600;
+
+    margin-bottom: 3px;
+}
+
+
+.calendar-event-time {
+    font-size: 0.8rem;
+
+    margin-bottom: 2px;
+}
+
+
+.calendar-event-info {
+    font-size: 0.78rem;
+
+    opacity: 0.9;
+}

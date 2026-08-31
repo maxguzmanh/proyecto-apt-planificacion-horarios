@@ -12,6 +12,10 @@ from academico.models import (
 
 from .models import Horario
 
+HORA_INICIO_CALENDARIO = 6
+HORA_FIN_CALENDARIO = 22
+PIXELES_POR_MINUTO = 0.75
+
 
 def inicio(request):
     context = {
@@ -75,7 +79,7 @@ def planificacion(request):
         periodo=periodo,
     )
 
-    horarios = (
+    horarios = list(
         Horario.objects.filter(
             periodo=periodo,
             asignatura__semestre=semestre,
@@ -91,6 +95,89 @@ def planificacion(request):
         )
     )
 
+    dias = [
+        ("LU", "Lunes"),
+        ("MA", "Martes"),
+        ("MI", "Miércoles"),
+        ("JU", "Jueves"),
+        ("VI", "Viernes"),
+        ("SA", "Sábado"),
+    ]
+
+    inicio_calendario = HORA_INICIO_CALENDARIO * 60
+    fin_calendario = HORA_FIN_CALENDARIO * 60
+
+    altura_calendario = int((fin_calendario - inicio_calendario) * PIXELES_POR_MINUTO)
+
+    horas_calendario = []
+
+    for hora in range(
+        HORA_INICIO_CALENDARIO,
+        HORA_FIN_CALENDARIO,
+    ):
+        minutos = hora * 60
+
+        top = int((minutos - inicio_calendario) * PIXELES_POR_MINUTO)
+
+        horas_calendario.append(
+            {
+                "texto": f"{hora:02d}:00",
+                "top": top,
+            }
+        )
+
+    dias_calendario = []
+
+    for codigo, nombre in dias:
+
+        bloques = []
+
+        for horario in horarios:
+
+            if horario.dia != codigo:
+                continue
+
+            inicio = horario.hora_inicio.hour * 60 + horario.hora_inicio.minute
+
+            fin = horario.hora_fin.hour * 60 + horario.hora_fin.minute
+
+            # Solo mostramos horarios dentro del rango visible.
+            if fin <= inicio_calendario or inicio >= fin_calendario:
+                continue
+
+            inicio_visible = max(
+                inicio,
+                inicio_calendario,
+            )
+
+            fin_visible = min(
+                fin,
+                fin_calendario,
+            )
+
+            top = int((inicio_visible - inicio_calendario) * PIXELES_POR_MINUTO)
+
+            altura = max(
+                int((fin_visible - inicio_visible) * PIXELES_POR_MINUTO),
+                30,
+            )
+
+            bloques.append(
+                {
+                    "horario": horario,
+                    "top": top,
+                    "altura": altura,
+                }
+            )
+
+        dias_calendario.append(
+            {
+                "codigo": codigo,
+                "nombre": nombre,
+                "horarios": bloques,
+            }
+        )
+
     context = {
         "centro": centro,
         "sede": sede,
@@ -98,7 +185,9 @@ def planificacion(request):
         "carrera": carrera,
         "periodo": periodo,
         "semestre": semestre,
-        "horarios": horarios,
+        "dias_calendario": dias_calendario,
+        "horas_calendario": horas_calendario,
+        "altura_calendario": altura_calendario,
     }
 
     return render(
