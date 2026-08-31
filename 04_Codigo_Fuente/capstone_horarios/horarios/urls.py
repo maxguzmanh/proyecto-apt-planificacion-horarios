@@ -24,6 +24,11 @@ urlpatterns = [
         views.eliminar_asignacion,
         name="eliminar_asignacion",
     ),
+    path(
+        "planificacion/exportar-excel/",
+        views.exportar_excel,
+        name="exportar_excel",
+    ),
     # Selects dependientes
     path(
         "ajax/sedes/",

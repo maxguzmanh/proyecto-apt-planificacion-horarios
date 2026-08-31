@@ -4,8 +4,11 @@ from django.contrib.auth.decorators import (
     permission_required,
 )
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from academico.models import (
     CentroTutorial,
@@ -600,3 +603,339 @@ def eliminar_asignacion(request, horario_id):
         "horarios/eliminar_asignacion.html",
         context,
     )
+
+
+# ==========================================================
+# EXPORTAR PLANIFICACIÓN A EXCEL
+# ==========================================================
+
+
+@login_required
+@permission_required(
+    "horarios.view_horario",
+    raise_exception=True,
+)
+def exportar_excel(request):
+
+    centro_id = request.GET.get("centro")
+    sede_id = request.GET.get("sede")
+    facultad_id = request.GET.get("facultad")
+    carrera_id = request.GET.get("carrera")
+    periodo_id = request.GET.get("periodo")
+    semestre_id = request.GET.get("semestre")
+
+    # ------------------------------------------------------
+    # Validar parámetros
+    # ------------------------------------------------------
+
+    if not all(
+        [
+            centro_id,
+            sede_id,
+            facultad_id,
+            carrera_id,
+            periodo_id,
+            semestre_id,
+        ]
+    ):
+        return redirect("inicio")
+
+    # ------------------------------------------------------
+    # Validar estructura académica
+    # ------------------------------------------------------
+
+    centro = get_object_or_404(
+        CentroTutorial,
+        pk=centro_id,
+    )
+
+    sede = get_object_or_404(
+        Sede,
+        pk=sede_id,
+        centro_tutorial=centro,
+    )
+
+    facultad = get_object_or_404(
+        Facultad,
+        pk=facultad_id,
+        sede=sede,
+    )
+
+    carrera = get_object_or_404(
+        Carrera,
+        pk=carrera_id,
+        facultad=facultad,
+    )
+
+    periodo = get_object_or_404(
+        PeriodoAcademico,
+        pk=periodo_id,
+    )
+
+    semestre = get_object_or_404(
+        Semestre,
+        pk=semestre_id,
+        carrera=carrera,
+        periodo=periodo,
+    )
+
+    # ------------------------------------------------------
+    # Obtener horarios
+    # ------------------------------------------------------
+
+    horarios = (
+        Horario.objects.filter(
+            periodo=periodo,
+            asignatura__semestre=semestre,
+        )
+        .select_related(
+            "asignatura",
+            "profesor",
+            "aula",
+        )
+        .order_by(
+            "dia",
+            "hora_inicio",
+        )
+    )
+
+    # ------------------------------------------------------
+    # Crear libro Excel
+    # ------------------------------------------------------
+
+    workbook = Workbook()
+
+    hoja = workbook.active
+    hoja.title = "Planificación"
+
+    # ------------------------------------------------------
+    # Título
+    # ------------------------------------------------------
+
+    hoja.merge_cells("A1:H1")
+
+    titulo = hoja["A1"]
+
+    titulo.value = "PLANIFICACIÓN DE HORARIOS"
+
+    titulo.font = Font(
+        bold=True,
+        size=16,
+        color="FFFFFF",
+    )
+
+    titulo.fill = PatternFill(
+        fill_type="solid",
+        fgColor="0D6EFD",
+    )
+
+    titulo.alignment = Alignment(
+        horizontal="center",
+        vertical="center",
+    )
+
+    hoja.row_dimensions[1].height = 28
+
+    # ------------------------------------------------------
+    # Información académica
+    # ------------------------------------------------------
+
+    datos_academicos = [
+        ("Centro Tutorial", centro.nombre),
+        ("Sede", sede.nombre),
+        ("Facultad", facultad.nombre),
+        ("Carrera", carrera.nombre),
+        ("Periodo Académico", periodo.nombre),
+        ("Semestre", f"Semestre {semestre.numero}"),
+    ]
+
+    fila = 3
+
+    for etiqueta, valor in datos_academicos:
+
+        hoja.cell(
+            row=fila,
+            column=1,
+            value=etiqueta,
+        ).font = Font(bold=True)
+
+        hoja.cell(
+            row=fila,
+            column=2,
+            value=valor,
+        )
+
+        fila += 1
+
+    # ------------------------------------------------------
+    # Encabezados
+    # ------------------------------------------------------
+
+    fila_encabezado = 10
+
+    encabezados = [
+        "Código",
+        "Asignatura",
+        "Profesor",
+        "Identificación profesor",
+        "Aula",
+        "Día",
+        "Hora inicio",
+        "Hora término",
+    ]
+
+    for columna, encabezado in enumerate(
+        encabezados,
+        start=1,
+    ):
+
+        celda = hoja.cell(
+            row=fila_encabezado,
+            column=columna,
+            value=encabezado,
+        )
+
+        celda.font = Font(
+            bold=True,
+            color="FFFFFF",
+        )
+
+        celda.fill = PatternFill(
+            fill_type="solid",
+            fgColor="212529",
+        )
+
+        celda.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+        )
+
+    # ------------------------------------------------------
+    # Datos de los horarios
+    # ------------------------------------------------------
+
+    fila_actual = fila_encabezado + 1
+
+    for horario in horarios:
+
+        hoja.cell(
+            row=fila_actual,
+            column=1,
+            value=horario.asignatura.codigo,
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=2,
+            value=horario.asignatura.nombre,
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=3,
+            value=str(horario.profesor),
+        )
+
+        # Identificación del profesor
+        hoja.cell(
+            row=fila_actual,
+            column=4,
+            value=str(horario.profesor.identificacion),
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=5,
+            value=horario.aula.nombre,
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=6,
+            value=horario.get_dia_display(),
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=7,
+            value=horario.hora_inicio.strftime("%H:%M"),
+        )
+
+        hoja.cell(
+            row=fila_actual,
+            column=8,
+            value=horario.hora_fin.strftime("%H:%M"),
+        )
+
+        fila_actual += 1
+
+    # ------------------------------------------------------
+    # Ancho de columnas
+    # ------------------------------------------------------
+
+    anchos = {
+        "A": 15,
+        "B": 30,
+        "C": 25,
+        "D": 24,
+        "E": 15,
+        "F": 15,
+        "G": 15,
+        "H": 15,
+    }
+
+    for columna, ancho in anchos.items():
+        hoja.column_dimensions[columna].width = ancho
+
+    # ------------------------------------------------------
+    # Alineación
+    # ------------------------------------------------------
+
+    for fila_excel in range(
+        fila_encabezado + 1,
+        fila_actual,
+    ):
+
+        for columna in [1, 4, 5, 6, 7, 8]:
+
+            hoja.cell(
+                row=fila_excel,
+                column=columna,
+            ).alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
+
+    # Congelar encabezado
+    hoja.freeze_panes = "A11"
+
+    # ------------------------------------------------------
+    # Nombre del archivo
+    # ------------------------------------------------------
+
+    nombre_carrera = carrera.nombre.replace(" ", "_").replace("/", "-")
+
+    nombre_periodo = periodo.nombre.replace(" ", "_").replace("/", "-")
+
+    nombre_archivo = (
+        f"planificacion_"
+        f"{nombre_carrera}_"
+        f"{nombre_periodo}_"
+        f"semestre_{semestre.numero}.xlsx"
+    )
+
+    # ------------------------------------------------------
+    # Descargar archivo
+    # ------------------------------------------------------
+
+    response = HttpResponse(
+        content_type=(
+            "application/" "vnd.openxmlformats-officedocument." "spreadsheetml.sheet"
+        )
+    )
+
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+
+    workbook.save(response)
+
+    return response

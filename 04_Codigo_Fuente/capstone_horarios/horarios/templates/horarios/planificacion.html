@@ -175,16 +175,32 @@ Planificación de Horarios
                 tiene permiso para crear horarios.
             -->
 
-            {% if perms.horarios.add_horario %}
+            <div class="d-flex gap-2">
 
-                <a
-                    href="{% url 'nueva_asignacion' %}?periodo={{ periodo.id }}&semestre={{ semestre.id }}&sede={{ sede.id }}"
-                    class="btn btn-primary"
-                >
-                    + Nueva asignación
-                </a>
+                {% if perms.horarios.view_horario %}
 
-            {% endif %}
+                    <a
+                        href="{% url 'exportar_excel' %}?centro={{ centro.id }}&sede={{ sede.id }}&facultad={{ facultad.id }}&carrera={{ carrera.id }}&periodo={{ periodo.id }}&semestre={{ semestre.id }}"
+                        class="btn btn-outline-success"
+                    >
+                        Exportar Excel
+                    </a>
+
+                {% endif %}
+
+
+                {% if perms.horarios.add_horario %}
+
+                    <a
+                        href="{% url 'nueva_asignacion' %}?periodo={{ periodo.id }}&semestre={{ semestre.id }}&sede={{ sede.id }}"
+                        class="btn btn-primary"
+                    >
+                        + Nueva asignación
+                    </a>
+
+                {% endif %}
+
+            </div>
 
         </div>
 
