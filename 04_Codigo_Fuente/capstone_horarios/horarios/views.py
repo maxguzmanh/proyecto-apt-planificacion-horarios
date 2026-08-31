@@ -1,3 +1,7 @@
+from django.contrib.auth.decorators import (
+    login_required,
+    permission_required,
+)
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,6 +32,7 @@ PIXELES_POR_MINUTO = 0.75
 # ==========================================================
 
 
+@login_required
 def inicio(request):
 
     context = {
@@ -46,6 +51,11 @@ def inicio(request):
 # ==========================================================
 
 
+@login_required
+@permission_required(
+    "horarios.view_horario",
+    raise_exception=True,
+)
 def planificacion(request):
 
     centro_id = request.GET.get("centro")
@@ -54,6 +64,23 @@ def planificacion(request):
     carrera_id = request.GET.get("carrera")
     periodo_id = request.GET.get("periodo")
     semestre_id = request.GET.get("semestre")
+
+    if not all(
+        [
+            centro_id,
+            sede_id,
+            facultad_id,
+            carrera_id,
+            periodo_id,
+            semestre_id,
+        ]
+    ):
+        return redirect("inicio")
+
+    centro = get_object_or_404(
+        CentroTutorial,
+        pk=centro_id,
+    )
 
     # ------------------------------------------------------
     # Validamos la estructura académica seleccionada
@@ -234,6 +261,7 @@ def planificacion(request):
 # ==========================================================
 
 
+@login_required
 def cargar_sedes(request):
 
     centro_id = request.GET.get("centro")
@@ -249,6 +277,7 @@ def cargar_sedes(request):
     )
 
 
+@login_required
 def cargar_facultades(request):
 
     sede_id = request.GET.get("sede")
@@ -264,6 +293,7 @@ def cargar_facultades(request):
     )
 
 
+@login_required
 def cargar_carreras(request):
 
     facultad_id = request.GET.get("facultad")
@@ -279,6 +309,7 @@ def cargar_carreras(request):
     )
 
 
+@login_required
 def cargar_periodos(request):
 
     carrera_id = request.GET.get("carrera")
@@ -298,6 +329,7 @@ def cargar_periodos(request):
     )
 
 
+@login_required
 def cargar_semestres(request):
 
     carrera_id = request.GET.get("carrera")
@@ -322,6 +354,11 @@ def cargar_semestres(request):
 # ==========================================================
 
 
+@login_required
+@permission_required(
+    "horarios.add_horario",
+    raise_exception=True,
+)
 def nueva_asignacion(request):
 
     periodo_id = request.GET.get("periodo")
@@ -344,7 +381,6 @@ def nueva_asignacion(request):
         pk=sede_id,
     )
 
-    # Dirección a la que volveremos después de guardar.
     volver_a = request.POST.get("volver_a") or request.META.get("HTTP_REFERER") or "/"
 
     if request.method == "POST":
@@ -360,14 +396,10 @@ def nueva_asignacion(request):
 
             horario = form.save(commit=False)
 
-            # Periodo no aparece como campo editable
-            # en el formulario.
             horario.periodo = periodo
 
             try:
 
-                # Ejecutamos explícitamente las validaciones
-                # del modelo antes de guardar.
                 horario.full_clean()
 
             except ValidationError as error:
@@ -426,6 +458,11 @@ def nueva_asignacion(request):
 # ==========================================================
 
 
+@login_required
+@permission_required(
+    "horarios.change_horario",
+    raise_exception=True,
+)
 def editar_asignacion(request, horario_id):
 
     horario = get_object_or_404(
@@ -457,8 +494,6 @@ def editar_asignacion(request, horario_id):
 
             try:
 
-                # Volvemos a ejecutar las reglas de negocio
-                # antes de guardar los cambios.
                 horario_editado.full_clean()
 
             except ValidationError as error:
@@ -519,6 +554,11 @@ def editar_asignacion(request, horario_id):
 # ==========================================================
 
 
+@login_required
+@permission_required(
+    "horarios.delete_horario",
+    raise_exception=True,
+)
 def eliminar_asignacion(request, horario_id):
 
     horario = get_object_or_404(

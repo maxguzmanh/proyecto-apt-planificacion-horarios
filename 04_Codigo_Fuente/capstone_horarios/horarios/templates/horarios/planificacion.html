@@ -151,7 +151,7 @@ Planificación de Horarios
 
             </div>
 
-
+{% if perms.horarios.add_horario %}
             <a
                 href="{% url 'nueva_asignacion' %}?periodo={{ periodo.id }}&semestre={{ semestre.id }}&sede={{ sede.id }}"
                 class="btn btn-primary"
@@ -162,6 +162,7 @@ Planificación de Horarios
                 </div>
 
             </div>
+{% endif %}
 
 
          <div class="card-body p-0">

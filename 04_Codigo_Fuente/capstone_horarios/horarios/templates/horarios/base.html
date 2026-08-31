@@ -2,79 +2,205 @@
 
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{% block title %}Planificación de Horarios{% endblock %}</title>
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% block title %}
+        Planificación de Horarios
+        {% endblock %}
+    </title>
+
 
     <!-- Bootstrap -->
+
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
         rel="stylesheet"
     >
 
+
     <!-- CSS propio -->
+
     <link
         rel="stylesheet"
         href="{% static 'horarios/css/estilos.css' %}"
     >
+
 </head>
+
 
 <body>
 
-    <!-- Barra superior -->
+
+    <!-- ==================================================
+         BARRA DE NAVEGACIÓN
+         ================================================== -->
+
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+
         <div class="container">
 
-            <a class="navbar-brand fw-semibold" href="/">
+
+            <!-- Nombre del sistema -->
+
+            <a
+                class="navbar-brand fw-semibold"
+                href="{% url 'inicio' %}"
+            >
                 Planificación de Horarios
             </a>
+
+
+            <!-- Botón responsive -->
 
             <button
                 class="navbar-toggler"
                 type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#navbarPrincipal"
+                aria-controls="navbarPrincipal"
+                aria-expanded="false"
+                aria-label="Mostrar navegación"
             >
+
                 <span class="navbar-toggler-icon"></span>
+
             </button>
+
+
+            <!-- Menú -->
 
             <div
                 class="collapse navbar-collapse"
                 id="navbarPrincipal"
             >
 
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+
+
+                    <!-- Inicio -->
 
                     <li class="nav-item">
-                        <a class="nav-link active" href="/">
-                            Inicio
-                        </a>
-                    </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">
-                            Planificación
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
                         <a
                             class="nav-link"
-                            href="/admin/"
-                            target="_blank"
+                            href="{% url 'inicio' %}"
                         >
-                            Administración
+                            Inicio
                         </a>
+
                     </li>
+
+
+                    <!-- Planificación -->
+
+                    <li class="nav-item">
+
+                        <a
+                            class="nav-link"
+                            href="{% url 'inicio' %}"
+                        >
+                            Planificación
+                        </a>
+
+                    </li>
+
+
+                    <!-- Administración -->
+
+                    {% if request.user.is_staff %}
+
+                        <li class="nav-item">
+
+                            <a
+                                class="nav-link"
+                                href="/admin/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Administración
+                            </a>
+
+                        </li>
+
+                    {% endif %}
+
+
+                    <!-- Separador visual -->
+
+                    {% if request.user.is_authenticated %}
+
+                        <li class="nav-item d-none d-lg-block">
+
+                            <span class="nav-link text-secondary">
+                                |
+                            </span>
+
+                        </li>
+
+
+                        <!-- Usuario conectado -->
+
+                        <li class="nav-item">
+
+                            <span class="nav-link text-light">
+
+                                Usuario:
+                                <strong>
+                                    {{ request.user.username }}
+                                </strong>
+
+                            </span>
+
+                        </li>
+
+
+                        <!-- Cerrar sesión -->
+
+                        <li class="nav-item">
+
+                            <form
+                                method="POST"
+                                action="{% url 'logout' %}"
+                                class="d-inline"
+                            >
+
+                                {% csrf_token %}
+
+                                <button
+                                    type="submit"
+                                    class="btn nav-link border-0"
+                                >
+                                    Cerrar sesión
+                                </button>
+
+                            </form>
+
+                        </li>
+
+                    {% endif %}
+
 
                 </ul>
 
             </div>
+
         </div>
+
     </nav>
 
+
+    <!-- ==================================================
+         CONTENIDO PRINCIPAL
+         ================================================== -->
 
     <main class="container py-5">
 
@@ -85,12 +211,25 @@
     </main>
 
 
+    <!-- ==================================================
+         JAVASCRIPT
+         ================================================== -->
+
+
+    <!-- Bootstrap -->
+
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
     </script>
 
+
+    <!-- Scripts específicos de cada página -->
+
     {% block scripts %}
+
     {% endblock %}
 
+
 </body>
+
 </html>
