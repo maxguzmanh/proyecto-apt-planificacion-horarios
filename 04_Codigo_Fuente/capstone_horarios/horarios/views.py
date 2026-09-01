@@ -85,94 +85,182 @@ def inicio(request):
     raise_exception=True,
 )
 def planificacion(request):
-    centro_id = request.GET.get("centro")
-    sede_id = request.GET.get("sede")
-    facultad_id = request.GET.get("facultad")
-    programa_id = request.GET.get("programa") or request.GET.get("carrera")
-    periodo_id = request.GET.get("periodo")
-    semestre_id = request.GET.get("semestre")
 
-    if not all(
+    # ======================================================
+    # FILTROS
+    # ======================================================
+
+    centro_id = request.GET.get("centro", "").strip()
+    sede_id = request.GET.get("sede", "").strip()
+    facultad_id = request.GET.get("facultad", "").strip()
+    programa_id = request.GET.get("programa", "").strip()
+    periodo_id = request.GET.get("periodo", "").strip()
+    semestre_id = request.GET.get("semestre", "").strip()
+    grupo_id = request.GET.get("grupo", "").strip()
+
+    # ======================================================
+    # FILTROS OBLIGATORIOS
+    #
+    # Sede y Grupo son opcionales.
+    # ======================================================
+
+    filtros_completos = all(
         [
             centro_id,
-            sede_id,
             facultad_id,
             programa_id,
             periodo_id,
             semestre_id,
         ]
-    ):
-        return redirect("inicio")
-
-    centro = get_object_or_404(
-        CentroTutorial,
-        pk=centro_id,
-        activo=True,
     )
 
-    sede = get_object_or_404(
-        Sede,
-        pk=sede_id,
-        centro_tutorial=centro,
-        activo=True,
-    )
+    # ======================================================
+    # OBJETOS SELECCIONADOS
+    # ======================================================
 
-    facultad = get_object_or_404(
-        Facultad,
-        pk=facultad_id,
-        activo=True,
-    )
+    centro = None
+    sede = None
+    facultad = None
+    programa = None
+    periodo = None
+    semestre = None
+    grupo = None
 
-    programa = get_object_or_404(
-        ProgramaAcademico,
-        pk=programa_id,
-        facultad=facultad,
-        activo=True,
-    )
+    horarios = []
 
-    get_object_or_404(
-        ProgramaCentroTutorial,
-        programa=programa,
-        centro_tutorial=centro,
-        activo=True,
-    )
+    # ======================================================
+    # CARGAR PLANIFICACIÓN
+    # ======================================================
 
-    periodo = get_object_or_404(
-        PeriodoAcademico,
-        pk=periodo_id,
-    )
+    if filtros_completos:
 
-    semestre = get_object_or_404(
-        Semestre,
-        pk=semestre_id,
-    )
+        centro = get_object_or_404(
+            CentroTutorial,
+            pk=centro_id,
+            activo=True,
+        )
 
-    horarios = list(
-        Horario.objects.filter(
+        facultad = get_object_or_404(
+            Facultad,
+            pk=facultad_id,
+            activo=True,
+        )
+
+        programa = get_object_or_404(
+            ProgramaAcademico,
+            pk=programa_id,
+            facultad=facultad,
+            activo=True,
+        )
+
+        # Verificamos que el programa esté disponible
+        # en el Centro Tutorial seleccionado.
+
+        get_object_or_404(
+            ProgramaCentroTutorial,
+            programa=programa,
+            centro_tutorial=centro,
+            activo=True,
+        )
+
+        periodo = get_object_or_404(
+            PeriodoAcademico,
+            pk=periodo_id,
+            activo=True,
+        )
+
+        semestre = get_object_or_404(
+            Semestre,
+            pk=semestre_id,
+        )
+
+        # ==================================================
+        # SEDE OPCIONAL
+        # ==================================================
+
+        if sede_id:
+
+            sede = get_object_or_404(
+                Sede,
+                pk=sede_id,
+                centro_tutorial=centro,
+                activo=True,
+            )
+
+        # ==================================================
+        # GRUPO OPCIONAL
+        # ==================================================
+
+        if grupo_id:
+
+            grupo = get_object_or_404(
+                Grupo,
+                pk=grupo_id,
+                centro_tutorial=centro,
+                programa=programa,
+                periodo=periodo,
+                semestre=semestre,
+                activo=True,
+            )
+
+        # ==================================================
+        # CONSULTA BASE
+        # ==================================================
+
+        horarios_query = Horario.objects.filter(
             activo=True,
             oferta__activo=True,
             oferta__periodo=periodo,
             oferta__grupos__centro_tutorial=centro,
             oferta__grupos__programa=programa,
             oferta__grupos__semestre=semestre,
-            aula__sede=sede,
         )
-        .select_related(
-            "oferta",
-            "oferta__asignatura",
-            "oferta__profesor",
-            "oferta__periodo",
-            "oferta__modalidad",
-            "aula",
-            "aula__sede",
+
+        # ==================================================
+        # FILTRO DE SEDE
+        #
+        # Solamente se aplica si el usuario seleccionó una.
+        # ==================================================
+
+        if sede:
+
+            horarios_query = horarios_query.filter(
+                aula__sede=sede,
+            )
+
+        # ==================================================
+        # FILTRO DE GRUPO
+        # ==================================================
+
+        if grupo:
+
+            horarios_query = horarios_query.filter(
+                oferta__grupos=grupo,
+            )
+
+        horarios = list(
+            horarios_query.select_related(
+                "oferta",
+                "oferta__asignatura",
+                "oferta__profesor",
+                "oferta__periodo",
+                "oferta__modalidad",
+                "aula",
+                "aula__sede",
+            )
+            .prefetch_related(
+                "oferta__grupos",
+            )
+            .distinct()
+            .order_by(
+                "dia",
+                "hora_inicio",
+            )
         )
-        .prefetch_related("oferta__grupos")
-        .distinct()
-        .order_by(
-            "dia",
-            "hora_inicio",
-        )
-    )
+
+    # ======================================================
+    # DÍAS
+    # ======================================================
 
     dias = [
         ("LU", "Lunes"),
@@ -184,10 +272,18 @@ def planificacion(request):
         ("DO", "Domingo"),
     ]
 
+    # ======================================================
+    # DIMENSIONES DEL CALENDARIO
+    # ======================================================
+
     inicio_calendario = HORA_INICIO_CALENDARIO * 60
     fin_calendario = HORA_FIN_CALENDARIO * 60
 
     altura_calendario = int((fin_calendario - inicio_calendario) * PIXELES_POR_MINUTO)
+
+    # ======================================================
+    # HORAS DEL CALENDARIO
+    # ======================================================
 
     horas_calendario = []
 
@@ -195,7 +291,9 @@ def planificacion(request):
         HORA_INICIO_CALENDARIO,
         HORA_FIN_CALENDARIO,
     ):
+
         minutos = hora * 60
+
         top = int((minutos - inicio_calendario) * PIXELES_POR_MINUTO)
 
         horas_calendario.append(
@@ -205,12 +303,18 @@ def planificacion(request):
             }
         )
 
+    # ======================================================
+    # CONSTRUIR DÍAS DEL CALENDARIO
+    # ======================================================
+
     dias_calendario = []
 
     for codigo, nombre in dias:
+
         bloques = []
 
         for horario in horarios:
+
             if horario.dia != codigo:
                 continue
 
@@ -238,11 +342,46 @@ def planificacion(request):
                 30,
             )
 
+            # ==================================================
+            # INFORMACIÓN DE GRUPOS
+            # ==================================================
+
+            grupos_oferta = list(horario.oferta.grupos.all())
+
+            es_transversal = len(grupos_oferta) > 1
+
+            # ==================================================
+            # COLOR DEL EVENTO
+            # ==================================================
+
+            if es_transversal:
+
+                clase_evento = "evento-transversal"
+
+            else:
+
+                codigo_modalidad = horario.oferta.modalidad.codigo.strip().upper()
+
+                if codigo_modalidad == "VIR":
+
+                    clase_evento = "evento-virtual"
+
+                elif codigo_modalidad == "HIB":
+
+                    clase_evento = "evento-hibrida"
+
+                else:
+
+                    clase_evento = "evento-presencial"
+
             bloques.append(
                 {
                     "horario": horario,
                     "top": top,
                     "altura": altura,
+                    "clase_evento": clase_evento,
+                    "es_transversal": es_transversal,
+                    "grupos": grupos_oferta,
                 }
             )
 
@@ -254,16 +393,33 @@ def planificacion(request):
             }
         )
 
+    # ======================================================
+    # CONTEXTO
+    # ======================================================
+
     context = {
+        # Datos iniciales
+        "centros": (CentroTutorial.objects.filter(activo=True).order_by("nombre")),
+        # Objetos seleccionados
         "centro": centro,
         "sede": sede,
         "facultad": facultad,
         "programa": programa,
-        # Alias temporal para que los templates antiguos no fallen
-        # mientras reemplazamos Carrera por Programa Académico.
-        "carrera": programa,
         "periodo": periodo,
         "semestre": semestre,
+        "grupo": grupo,
+        # IDs seleccionados
+        "centro_id": centro_id,
+        "sede_id": sede_id,
+        "facultad_id": facultad_id,
+        "programa_id": programa_id,
+        "periodo_id": periodo_id,
+        "semestre_id": semestre_id,
+        "grupo_id": grupo_id,
+        # Estado
+        "filtros_completos": filtros_completos,
+        "hay_horarios": bool(horarios),
+        # Calendario
         "dias_calendario": dias_calendario,
         "horas_calendario": horas_calendario,
         "altura_calendario": altura_calendario,

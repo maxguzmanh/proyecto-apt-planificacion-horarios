@@ -1,29 +1,73 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+    // =====================================================
+    // ELEMENTOS
+    // =====================================================
+
+    const form = document.getElementById(
+        "filtros-planificacion"
+    );
+
     const centro = document.getElementById("centro");
     const sede = document.getElementById("sede");
     const facultad = document.getElementById("facultad");
     const programa = document.getElementById("programa");
     const periodo = document.getElementById("periodo");
     const semestre = document.getElementById("semestre");
+    const grupo = document.getElementById("grupo");
 
-    if (!centro) {
+
+    if (!form || !centro) {
         return;
     }
 
 
     // =====================================================
-    // FUNCIONES AUXILIARES
+    // SELECCIONES ACTUALES
+    // =====================================================
+
+    const seleccion = {
+
+        centro:
+            form.dataset.selectedCentro || "",
+
+        sede:
+            form.dataset.selectedSede || "",
+
+        facultad:
+            form.dataset.selectedFacultad || "",
+
+        programa:
+            form.dataset.selectedPrograma || "",
+
+        periodo:
+            form.dataset.selectedPeriodo || "",
+
+        semestre:
+            form.dataset.selectedSemestre || "",
+
+        grupo:
+            form.dataset.selectedGrupo || "",
+    };
+
+
+    // =====================================================
+    // UTILIDADES
     // =====================================================
 
     function limpiarSelect(
         select,
-        texto = "Seleccione..."
+        texto
     ) {
+
+        if (!select) {
+            return;
+        }
 
         select.innerHTML = "";
 
-        const option = document.createElement("option");
+        const option =
+            document.createElement("option");
 
         option.value = "";
         option.textContent = texto;
@@ -34,8 +78,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    function habilitarSelect(select) {
-        select.disabled = false;
+    function prepararSelect(
+        select,
+        texto
+    ) {
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = "";
+
+        const option =
+            document.createElement("option");
+
+        option.value = "";
+        option.textContent = texto;
+
+        select.appendChild(option);
     }
 
 
@@ -44,6 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const response = await fetch(url);
 
         if (!response.ok) {
+
             throw new Error(
                 "No fue posible obtener los datos."
             );
@@ -56,36 +117,281 @@ document.addEventListener("DOMContentLoaded", function () {
     function cargarOpciones(
         select,
         datos,
-        campoTexto = "nombre"
+        campoTexto,
+        valorSeleccionado = "",
+        textoVacio = "No hay opciones disponibles"
     ) {
 
-        datos.forEach((registro) => {
+        if (!select) {
+            return;
+        }
 
-            const option = document.createElement("option");
 
-            option.value = registro.id;
-            option.textContent = registro[campoTexto];
+        if (!datos.length) {
 
-            select.appendChild(option);
-        });
+            limpiarSelect(
+                select,
+                textoVacio
+            );
 
-        habilitarSelect(select);
+            return;
+        }
+
+
+        datos.forEach(
+            function (registro) {
+
+                const option =
+                    document.createElement("option");
+
+                option.value =
+                    registro.id;
+
+                option.textContent =
+                    registro[campoTexto];
+
+                select.appendChild(option);
+            }
+        );
+
+
+        select.disabled = false;
+
+
+        if (valorSeleccionado) {
+
+            select.value =
+                String(valorSeleccionado);
+        }
     }
 
 
     // =====================================================
-    // CENTRO TUTORIAL
+    // CARGAR SEDES
+    // =====================================================
+
+    async function cargarSedes(
+        centroId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            sede,
+            "Todas las sedes"
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/sedes/?centro=${centroId}`
+        );
+
+
+        cargarOpciones(
+            sede,
+            datos,
+            "nombre",
+            seleccionado,
+            "No hay sedes disponibles"
+        );
+    }
+
+
+    // =====================================================
+    // CARGAR FACULTADES
+    // =====================================================
+
+    async function cargarFacultades(
+        centroId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            facultad,
+            "Seleccione una facultad..."
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/facultades/?centro=${centroId}`
+        );
+
+
+        cargarOpciones(
+            facultad,
+            datos,
+            "nombre",
+            seleccionado,
+            "No hay facultades disponibles"
+        );
+    }
+
+
+    // =====================================================
+    // CARGAR PROGRAMAS
+    // =====================================================
+
+    async function cargarProgramas(
+        centroId,
+        facultadId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            programa,
+            "Seleccione un programa..."
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/programas/`
+            + `?centro=${centroId}`
+            + `&facultad=${facultadId}`
+        );
+
+
+        cargarOpciones(
+            programa,
+            datos,
+            "nombre",
+            seleccionado,
+            "No hay programas disponibles"
+        );
+    }
+
+
+    // =====================================================
+    // CARGAR PERIODOS
+    // =====================================================
+
+    async function cargarPeriodos(
+        centroId,
+        programaId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            periodo,
+            "Seleccione un periodo..."
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/periodos/`
+            + `?centro=${centroId}`
+            + `&programa=${programaId}`
+        );
+
+
+        cargarOpciones(
+            periodo,
+            datos,
+            "nombre",
+            seleccionado,
+            "No hay periodos disponibles"
+        );
+    }
+
+
+    // =====================================================
+    // CARGAR SEMESTRES
+    // =====================================================
+
+    async function cargarSemestres(
+        centroId,
+        programaId,
+        periodoId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            semestre,
+            "Seleccione un semestre..."
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/semestres/`
+            + `?centro=${centroId}`
+            + `&programa=${programaId}`
+            + `&periodo=${periodoId}`
+        );
+
+
+        cargarOpciones(
+            semestre,
+            datos,
+            "nombre",
+            seleccionado,
+            "No hay semestres disponibles"
+        );
+    }
+
+
+    // =====================================================
+    // CARGAR GRUPOS
+    // =====================================================
+
+    async function cargarGrupos(
+        centroId,
+        programaId,
+        periodoId,
+        semestreId,
+        seleccionado = ""
+    ) {
+
+        prepararSelect(
+            grupo,
+            "Todos los grupos"
+        );
+
+
+        const datos = await obtenerDatos(
+            `/ajax/grupos/`
+            + `?centro=${centroId}`
+            + `&programa=${programaId}`
+            + `&periodo=${periodoId}`
+            + `&semestre=${semestreId}`
+        );
+
+
+        if (!datos.length) {
+
+            limpiarSelect(
+                grupo,
+                "No hay grupos disponibles"
+            );
+
+            return;
+        }
+
+
+        cargarOpciones(
+            grupo,
+            datos,
+            "codigo",
+            seleccionado
+        );
+
+
+        grupo.disabled = false;
+    }
+
+
+    // =====================================================
+    // EVENTO CENTRO
     // =====================================================
 
     centro.addEventListener(
         "change",
         async function () {
 
-            const centroId = this.value;
+            const centroId =
+                centro.value;
+
 
             limpiarSelect(
                 sede,
-                "Seleccione una sede..."
+                "Todas las sedes"
             );
 
             limpiarSelect(
@@ -108,37 +414,29 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Seleccione un semestre..."
             );
 
+            limpiarSelect(
+                grupo,
+                "Todos los grupos"
+            );
+
+
             if (!centroId) {
                 return;
             }
 
+
             try {
 
-                // -----------------------------------------
-                // SEDES
-                // -----------------------------------------
+                await Promise.all(
+                    [
+                        cargarSedes(
+                            centroId
+                        ),
 
-                const sedes = await obtenerDatos(
-                    `/ajax/sedes/?centro=${centroId}`
-                );
-
-                cargarOpciones(
-                    sede,
-                    sedes
-                );
-
-
-                // -----------------------------------------
-                // FACULTADES
-                // -----------------------------------------
-
-                const facultades = await obtenerDatos(
-                    `/ajax/facultades/?centro=${centroId}`
-                );
-
-                cargarOpciones(
-                    facultad,
-                    facultades
+                        cargarFacultades(
+                            centroId
+                        ),
+                    ]
                 );
 
             } catch (error) {
@@ -150,15 +448,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // =====================================================
-    // FACULTAD
+    // EVENTO FACULTAD
     // =====================================================
 
     facultad.addEventListener(
         "change",
         async function () {
-
-            const facultadId = this.value;
-            const centroId = centro.value;
 
             limpiarSelect(
                 programa,
@@ -175,24 +470,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Seleccione un semestre..."
             );
 
+            limpiarSelect(
+                grupo,
+                "Todos los grupos"
+            );
+
+
             if (
-                !facultadId
-                || !centroId
+                !centro.value
+                || !facultad.value
             ) {
                 return;
             }
 
+
             try {
 
-                const programas = await obtenerDatos(
-                    `/ajax/programas/`
-                    + `?facultad=${facultadId}`
-                    + `&centro=${centroId}`
-                );
-
-                cargarOpciones(
-                    programa,
-                    programas
+                await cargarProgramas(
+                    centro.value,
+                    facultad.value
                 );
 
             } catch (error) {
@@ -204,15 +500,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // =====================================================
-    // PROGRAMA ACADÉMICO
+    // EVENTO PROGRAMA
     // =====================================================
 
     programa.addEventListener(
         "change",
         async function () {
-
-            const programaId = this.value;
-            const centroId = centro.value;
 
             limpiarSelect(
                 periodo,
@@ -224,24 +517,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Seleccione un semestre..."
             );
 
+            limpiarSelect(
+                grupo,
+                "Todos los grupos"
+            );
+
+
             if (
-                !programaId
-                || !centroId
+                !centro.value
+                || !programa.value
             ) {
                 return;
             }
 
+
             try {
 
-                const periodos = await obtenerDatos(
-                    `/ajax/periodos/`
-                    + `?programa=${programaId}`
-                    + `&centro=${centroId}`
-                );
-
-                cargarOpciones(
-                    periodo,
-                    periodos
+                await cargarPeriodos(
+                    centro.value,
+                    programa.value
                 );
 
             } catch (error) {
@@ -253,43 +547,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // =====================================================
-    // PERIODO ACADÉMICO
+    // EVENTO PERIODO
     // =====================================================
 
     periodo.addEventListener(
         "change",
         async function () {
 
-            const periodoId = this.value;
-            const programaId = programa.value;
-            const centroId = centro.value;
-
             limpiarSelect(
                 semestre,
                 "Seleccione un semestre..."
             );
 
+            limpiarSelect(
+                grupo,
+                "Todos los grupos"
+            );
+
+
             if (
-                !periodoId
-                || !programaId
-                || !centroId
+                !centro.value
+                || !programa.value
+                || !periodo.value
             ) {
                 return;
             }
 
+
             try {
 
-                const semestres = await obtenerDatos(
-                    `/ajax/semestres/`
-                    + `?programa=${programaId}`
-                    + `&centro=${centroId}`
-                    + `&periodo=${periodoId}`
-                );
-
-                cargarOpciones(
-                    semestre,
-                    semestres,
-                    "nombre"
+                await cargarSemestres(
+                    centro.value,
+                    programa.value,
+                    periodo.value
                 );
 
             } catch (error) {
@@ -298,5 +588,160 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     );
+
+
+    // =====================================================
+    // EVENTO SEMESTRE
+    // =====================================================
+
+    semestre.addEventListener(
+        "change",
+        async function () {
+
+            limpiarSelect(
+                grupo,
+                "Todos los grupos"
+            );
+
+
+            if (
+                !centro.value
+                || !programa.value
+                || !periodo.value
+                || !semestre.value
+            ) {
+                return;
+            }
+
+
+            try {
+
+                await cargarGrupos(
+                    centro.value,
+                    programa.value,
+                    periodo.value,
+                    semestre.value
+                );
+
+            } catch (error) {
+
+                console.error(error);
+            }
+        }
+    );
+
+
+    // =====================================================
+    // RESTAURAR FILTROS AL RECARGAR
+    // =====================================================
+
+    async function restaurarSeleccion() {
+
+        if (!seleccion.centro) {
+            return;
+        }
+
+
+        centro.value =
+            seleccion.centro;
+
+
+        try {
+
+            // ----------------------------------------------
+            // SEDE + FACULTAD
+            // ----------------------------------------------
+
+            await Promise.all(
+                [
+                    cargarSedes(
+                        seleccion.centro,
+                        seleccion.sede
+                    ),
+
+                    cargarFacultades(
+                        seleccion.centro,
+                        seleccion.facultad
+                    ),
+                ]
+            );
+
+
+            // ----------------------------------------------
+            // PROGRAMA
+            // ----------------------------------------------
+
+            if (seleccion.facultad) {
+
+                await cargarProgramas(
+                    seleccion.centro,
+                    seleccion.facultad,
+                    seleccion.programa
+                );
+            }
+
+
+            // ----------------------------------------------
+            // PERIODO
+            // ----------------------------------------------
+
+            if (seleccion.programa) {
+
+                await cargarPeriodos(
+                    seleccion.centro,
+                    seleccion.programa,
+                    seleccion.periodo
+                );
+            }
+
+
+            // ----------------------------------------------
+            // SEMESTRE
+            // ----------------------------------------------
+
+            if (
+                seleccion.programa
+                && seleccion.periodo
+            ) {
+
+                await cargarSemestres(
+                    seleccion.centro,
+                    seleccion.programa,
+                    seleccion.periodo,
+                    seleccion.semestre
+                );
+            }
+
+
+            // ----------------------------------------------
+            // GRUPO
+            // ----------------------------------------------
+
+            if (
+                seleccion.programa
+                && seleccion.periodo
+                && seleccion.semestre
+            ) {
+
+                await cargarGrupos(
+                    seleccion.centro,
+                    seleccion.programa,
+                    seleccion.periodo,
+                    seleccion.semestre,
+                    seleccion.grupo
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Error restaurando filtros:",
+                error
+            );
+        }
+    }
+
+
+    restaurarSeleccion();
 
 });

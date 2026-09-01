@@ -1,4 +1,5 @@
 {% extends "horarios/base.html" %}
+{% load static %}
 
 {% block title %}
 Planificación de Horarios
@@ -7,374 +8,715 @@ Planificación de Horarios
 
 {% block content %}
 
-<!-- ==================================================
-     ENCABEZADO
-     ================================================== -->
+<div class="app-page">
 
-<div class="mb-4">
 
-    <div class="d-flex justify-content-between align-items-center">
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
+
+    <div class="workspace-header">
 
         <div>
 
-            <h1 class="h2 fw-semibold">
+            <div class="workspace-eyebrow">
+                PLANIFICACIÓN DOCENTE
+            </div>
+
+            <h1 class="workspace-title">
                 Planificación de Horarios
             </h1>
 
-            <p class="text-secondary mb-0">
-                Horario académico correspondiente a la selección realizada.
+            <p class="workspace-description">
+                Consulte y gestione la programación académica
+                aplicando los filtros correspondientes.
             </p>
 
         </div>
 
-        <a
-            href="{% url 'inicio' %}"
-            class="btn btn-outline-secondary"
-        >
-            Volver
-        </a>
-
     </div>
 
-</div>
 
+    <!-- ==================================================
+         FILTROS
+         ================================================== -->
 
-<!-- ==================================================
-     RESUMEN DE LA SELECCIÓN ACADÉMICA
-     ================================================== -->
+    <section class="planning-panel mb-4">
 
-<div class="card shadow-sm border-0 mb-4">
-
-    <div class="card-body">
-
-        <div class="row g-3">
-
-            <!-- Centro Tutorial -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Centro Tutorial
-                </small>
-
-                <div class="fw-semibold">
-                    {{ centro.nombre }}
-                </div>
-
-            </div>
-
-
-            <!-- Sede -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Sede
-                </small>
-
-                <div class="fw-semibold">
-                    {{ sede.nombre }}
-                </div>
-
-            </div>
-
-
-            <!-- Facultad -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Facultad
-                </small>
-
-                <div class="fw-semibold">
-                    {{ facultad.nombre }}
-                </div>
-
-            </div>
-
-
-            <!-- Carrera -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Carrera
-                </small>
-
-                <div class="fw-semibold">
-                    {{ carrera.nombre }}
-                </div>
-
-            </div>
-
-
-            <!-- Periodo Académico -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Periodo Académico
-                </small>
-
-                <div class="fw-semibold">
-                    {{ periodo.nombre }}
-                </div>
-
-            </div>
-
-
-            <!-- Semestre -->
-
-            <div class="col-md-4">
-
-                <small class="text-secondary">
-                    Semestre
-                </small>
-
-                <div class="fw-semibold">
-                    Semestre {{ semestre.numero }}
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- ==================================================
-     CALENDARIO SEMANAL
-     ================================================== -->
-
-<div class="card shadow-sm border-0">
-
-    <!-- Cabecera del calendario -->
-
-    <div class="card-header bg-transparent py-3">
-
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="panel-heading-enterprise">
 
             <div>
 
-                <h2 class="h5 mb-1">
-                    Horario semanal
+                <span class="panel-kicker">
+                    CONTEXTO ACADÉMICO
+                </span>
+
+                <h2>
+                    Filtros de planificación
                 </h2>
-
-                <small class="text-secondary">
-                    Distribución de asignaturas durante la semana.
-                </small>
-
-            </div>
-
-
-            <!--
-                El botón solamente aparece si el usuario
-                tiene permiso para crear horarios.
-            -->
-
-            <div class="d-flex gap-2">
-
-                {% if perms.horarios.view_horario %}
-
-                    <a
-                        href="{% url 'exportar_excel' %}?centro={{ centro.id }}&sede={{ sede.id }}&facultad={{ facultad.id }}&carrera={{ carrera.id }}&periodo={{ periodo.id }}&semestre={{ semestre.id }}"
-                        class="btn btn-outline-success"
-                    >
-                        Exportar Excel
-                    </a>
-
-                {% endif %}
-
-
-                {% if perms.horarios.add_horario %}
-
-                    <a
-                        href="{% url 'nueva_asignacion' %}?periodo={{ periodo.id }}&semestre={{ semestre.id }}&sede={{ sede.id }}"
-                        class="btn btn-primary"
-                    >
-                        + Nueva asignación
-                    </a>
-
-                {% endif %}
 
             </div>
 
         </div>
 
-    </div>
+
+        <form
+            id="filtros-planificacion"
+            method="GET"
+            action="{% url 'planificacion' %}"
+            class="planning-form"
+
+            data-selected-centro="{{ centro_id }}"
+            data-selected-sede="{{ sede_id }}"
+            data-selected-facultad="{{ facultad_id }}"
+            data-selected-programa="{{ programa_id }}"
+            data-selected-periodo="{{ periodo_id }}"
+            data-selected-semestre="{{ semestre_id }}"
+            data-selected-grupo="{{ grupo_id }}"
+        >
+
+            <div class="enterprise-form-grid">
 
 
-    <!-- Cuerpo del calendario -->
+                <!-- CENTRO -->
 
-    <div class="card-body p-0">
+                <div class="enterprise-field">
 
-        <div class="calendar-scroll">
+                    <label for="centro">
+                        Centro Tutorial
+                    </label>
 
-            <div
-                class="weekly-calendar"
-                style="--calendar-height: {{ altura_calendario }}px;"
-            >
-
-                <!-- ==================================================
-                     ESQUINA SUPERIOR IZQUIERDA
-                     ================================================== -->
-
-                <div class="calendar-corner">
-                    Hora
-                </div>
-
-
-                <!-- ==================================================
-                     CABECERAS DE LOS DÍAS
-                     ================================================== -->
-
-                {% for dia in dias_calendario %}
-
-                    <div class="calendar-day-header">
-                        {{ dia.nombre }}
-                    </div>
-
-                {% endfor %}
-
-
-                <!-- ==================================================
-                     COLUMNA IZQUIERDA CON LAS HORAS
-                     ================================================== -->
-
-                <div
-                    class="calendar-hours"
-                    style="height: {{ altura_calendario }}px;"
-                >
-
-                    {% for hora in horas_calendario %}
-
-                        <div
-                            class="calendar-hour-label"
-                            style="top: {{ hora.top }}px;"
-                        >
-                            {{ hora.texto }}
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-
-                <!-- ==================================================
-                     COLUMNAS DE CADA DÍA
-                     ================================================== -->
-
-                {% for dia in dias_calendario %}
-
-                    <div
-                        class="calendar-day-column"
-                        style="height: {{ altura_calendario }}px;"
+                    <select
+                        id="centro"
+                        name="centro"
+                        class="form-select"
+                        required
                     >
 
-                        {% for bloque in dia.horarios %}
+                        <option value="">
+                            Seleccione un Centro Tutorial...
+                        </option>
+
+                        {% for item in centros %}
+
+                            <option value="{{ item.id }}">
+                                {{ item.nombre }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
 
 
-                            <!--
-                                Si tiene permiso para editar,
-                                el bloque funciona como enlace.
-                            -->
+                <!-- FACULTAD -->
 
-                            {% if perms.horarios.change_horario %}
+                <div class="enterprise-field">
 
-                                <a
-                                    href="{% url 'editar_asignacion' bloque.horario.id %}?volver_a={{ request.get_full_path|urlencode }}"
-                                    class="calendar-event"
-                                    style="
-                                        top: {{ bloque.top }}px;
-                                        height: {{ bloque.altura }}px;
-                                    "
-                                >
+                    <label for="facultad">
+                        Facultad
+                    </label>
 
-                                    <div class="calendar-event-title">
-                                        {{ bloque.horario.asignatura.nombre }}
-                                    </div>
+                    <select
+                        id="facultad"
+                        name="facultad"
+                        class="form-select"
+                        required
+                        disabled
+                    >
 
-                                    <div class="calendar-event-time">
+                        <option value="">
+                            Seleccione una facultad...
+                        </option>
 
-                                        {{ bloque.horario.hora_inicio|time:"H:i" }}
-                                        -
-                                        {{ bloque.horario.hora_fin|time:"H:i" }}
+                    </select>
 
-                                    </div>
-
-                                    <div class="calendar-event-info">
-                                        {{ bloque.horario.profesor }}
-                                    </div>
-
-                                    <div class="calendar-event-info">
-                                        {{ bloque.horario.aula.nombre }}
-                                    </div>
-
-                                </a>
+                </div>
 
 
-                            <!--
-                                Si no tiene permiso para editar,
-                                solamente puede visualizar el bloque.
-                            -->
+                <!-- PROGRAMA -->
+
+                <div class="enterprise-field">
+
+                    <label for="programa">
+                        Programa Académico
+                    </label>
+
+                    <select
+                        id="programa"
+                        name="programa"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un programa...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- PERIODO -->
+
+                <div class="enterprise-field">
+
+                    <label for="periodo">
+                        Periodo Académico
+                    </label>
+
+                    <select
+                        id="periodo"
+                        name="periodo"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un periodo...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- SEMESTRE -->
+
+                <div class="enterprise-field">
+
+                    <label for="semestre">
+                        Semestre
+                    </label>
+
+                    <select
+                        id="semestre"
+                        name="semestre"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un semestre...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- SEDE OPCIONAL -->
+
+                <div class="enterprise-field">
+
+                    <label for="sede">
+                        Sede
+                        <span class="text-secondary fw-normal">
+                            (opcional)
+                        </span>
+                    </label>
+
+                    <select
+                        id="sede"
+                        name="sede"
+                        class="form-select"
+                        disabled
+                    >
+
+                        <option value="">
+                            Todas las sedes
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- GRUPO OPCIONAL -->
+
+                <div class="enterprise-field field-wide">
+
+                    <label for="grupo">
+                        Grupo
+                        <span class="text-secondary fw-normal">
+                            (opcional)
+                        </span>
+                    </label>
+
+                    <select
+                        id="grupo"
+                        name="grupo"
+                        class="form-select"
+                        disabled
+                    >
+
+                        <option value="">
+                            Todos los grupos
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 ACCIONES
+                 ================================================== -->
+
+            <div class="planning-actions">
+
+                <div class="form-help">
+
+                    Si no selecciona Sede o Grupo,
+                    la planificación mostrará todas las
+                    sedes y grupos disponibles para el
+                    contexto académico seleccionado.
+
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <a
+                        href="{% url 'planificacion' %}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Limpiar filtros
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        Aplicar filtros
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <!-- ==================================================
+         SIN FILTROS COMPLETOS
+         ================================================== -->
+
+    {% if not filtros_completos %}
+
+        <div class="alert alert-warning">
+
+            Seleccione Centro Tutorial, Facultad,
+            Programa Académico, Periodo y Semestre
+            para visualizar la planificación.
+
+        </div>
+
+
+    {% else %}
+
+
+        <!-- ==================================================
+             CALENDARIO
+             ================================================== -->
+
+        <div class="card">
+
+            <!-- CABECERA -->
+
+            <div class="card-header py-3">
+
+                <div
+                    class="
+                        d-flex
+                        justify-content-between
+                        align-items-center
+                        gap-3
+                    "
+                >
+
+                    <div>
+
+                        <h2 class="h5 mb-1">
+                            Horario semanal
+                        </h2>
+
+                        <small class="text-secondary">
+
+                            {{ programa.nombre }}
+
+                            · Semestre
+                            {{ semestre.get_numero_display }}
+
+                            {% if sede %}
+
+                                · {{ sede.nombre }}
 
                             {% else %}
 
-                                <div
-                                    class="calendar-event"
-                                    style="
-                                        top: {{ bloque.top }}px;
-                                        height: {{ bloque.altura }}px;
-                                    "
-                                >
-
-                                    <div class="calendar-event-title">
-                                        {{ bloque.horario.asignatura.nombre }}
-                                    </div>
-
-                                    <div class="calendar-event-time">
-
-                                        {{ bloque.horario.hora_inicio|time:"H:i" }}
-                                        -
-                                        {{ bloque.horario.hora_fin|time:"H:i" }}
-
-                                    </div>
-
-                                    <div class="calendar-event-info">
-                                        {{ bloque.horario.profesor }}
-                                    </div>
-
-                                    <div class="calendar-event-info">
-                                        {{ bloque.horario.aula.nombre }}
-                                    </div>
-
-                                </div>
+                                · Todas las sedes
 
                             {% endif %}
 
 
-                        {% empty %}
+                            {% if grupo %}
 
-                            <!--
-                                La columna queda vacía cuando ese día
-                                no tiene asignaturas.
-                            -->
+                                · Grupo {{ grupo.codigo }}
+
+                            {% else %}
+
+                                · Todos los grupos
+
+                            {% endif %}
+
+                        </small>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         ACCIONES
+                         ================================================== -->
+
+                    <div class="d-flex gap-2">
+
+
+                        <!-- EXPORTAR -->
+
+                        {% if perms.horarios.view_horario %}
+
+                            {% if sede %}
+
+                                <a
+                                    href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}"
+                                    class="btn btn-outline-success"
+                                >
+                                    Exportar Excel
+                                </a>
+
+                            {% else %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-success"
+                                    disabled
+                                    title="Seleccione una sede para utilizar esta exportación."
+                                >
+                                    Exportar Excel
+                                </button>
+
+                            {% endif %}
+
+                        {% endif %}
+
+
+                        <!-- NUEVA ASIGNACIÓN -->
+
+                        {% if perms.horarios.add_horario %}
+
+                            {% if sede %}
+
+                                <a
+                                    href="{% url 'nueva_asignacion' %}?{{ request.GET.urlencode }}&volver_a={{ request.get_full_path|urlencode }}"
+                                    class="btn btn-primary"
+                                >
+                                    + Nueva asignación
+                                </a>
+
+                            {% else %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
+                                    disabled
+                                    title="Seleccione una sede para crear una asignación."
+                                >
+                                    + Nueva asignación
+                                </button>
+
+                            {% endif %}
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 SIN HORARIOS
+                 ================================================== -->
+
+            {% if not hay_horarios %}
+
+                <div class="alert alert-warning m-3 mb-0">
+
+                    No existen horarios registrados para
+                    la combinación de filtros seleccionada.
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- ==================================================
+                 CALENDARIO
+                 ================================================== -->
+
+            <div class="card-body p-0">
+
+                <div class="calendar-scroll">
+
+                    <div
+                        class="weekly-calendar"
+                        style="
+                            --calendar-height:
+                            {{ altura_calendario }}px;
+                        "
+                    >
+
+
+                        <!-- HORA -->
+
+                        <div class="calendar-corner">
+                            Hora
+                        </div>
+
+
+                        <!-- DÍAS -->
+
+                        {% for dia in dias_calendario %}
+
+                            <div class="calendar-day-header">
+                                {{ dia.nombre }}
+                            </div>
+
+                        {% endfor %}
+
+
+                        <!-- HORAS -->
+
+                        <div
+                            class="calendar-hours"
+                            style="
+                                height:
+                                {{ altura_calendario }}px;
+                            "
+                        >
+
+                            {% for hora in horas_calendario %}
+
+                                <div
+                                    class="calendar-hour-label"
+                                    style="
+                                        top:
+                                        {{ hora.top }}px;
+                                    "
+                                >
+                                    {{ hora.texto }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+
+                        <!-- ==================================================
+                             COLUMNAS DE LOS DÍAS
+                             ================================================== -->
+
+                        {% for dia in dias_calendario %}
+
+                            <div
+                                class="calendar-day-column"
+                                style="
+                                    height:
+                                    {{ altura_calendario }}px;
+                                "
+                            >
+
+                                {% for bloque in dia.horarios %}
+
+
+                                    <!-- EDITABLE -->
+
+                                    {% if perms.horarios.change_horario %}
+
+                                        <a
+                                            href="{% url 'editar_asignacion' bloque.horario.id %}?volver_a={{ request.get_full_path|urlencode }}"
+                                            class="
+                                                calendar-event
+                                                {{ bloque.clase_evento }}
+                                            "
+                                            style="
+                                                top:
+                                                {{ bloque.top }}px;
+
+                                                height:
+                                                {{ bloque.altura }}px;
+                                            "
+                                        >
+
+                                            <div class="calendar-event-title">
+
+                                                {{ bloque.horario.oferta.asignatura.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-time">
+
+                                                {{ bloque.horario.hora_inicio|time:"H:i" }}
+                                                -
+                                                {{ bloque.horario.hora_fin|time:"H:i" }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.oferta.profesor }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.aula.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.aula.sede.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.oferta.modalidad.nombre }}
+
+                                                {% if bloque.es_transversal %}
+
+                                                    · Transversal
+
+                                                {% endif %}
+
+                                            </div>
+
+                                        </a>
+
+
+                                    <!-- SOLO LECTURA -->
+
+                                    {% else %}
+
+                                        <div
+                                            class="
+                                                calendar-event
+                                                {{ bloque.clase_evento }}
+                                            "
+                                            style="
+                                                top:
+                                                {{ bloque.top }}px;
+
+                                                height:
+                                                {{ bloque.altura }}px;
+                                            "
+                                        >
+
+                                            <div class="calendar-event-title">
+
+                                                {{ bloque.horario.oferta.asignatura.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-time">
+
+                                                {{ bloque.horario.hora_inicio|time:"H:i" }}
+                                                -
+                                                {{ bloque.horario.hora_fin|time:"H:i" }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.oferta.profesor }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.aula.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.aula.sede.nombre }}
+
+                                            </div>
+
+
+                                            <div class="calendar-event-info">
+
+                                                {{ bloque.horario.oferta.modalidad.nombre }}
+
+                                                {% if bloque.es_transversal %}
+
+                                                    · Transversal
+
+                                                {% endif %}
+
+                                            </div>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                {% endfor %}
+
+                            </div>
 
                         {% endfor %}
 
                     </div>
 
-                {% endfor %}
+                </div>
 
             </div>
 
         </div>
 
-    </div>
+    {% endif %}
 
 </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script
+    src="{% static 'horarios/js/selects.js' %}"
+></script>
 
 {% endblock %}
