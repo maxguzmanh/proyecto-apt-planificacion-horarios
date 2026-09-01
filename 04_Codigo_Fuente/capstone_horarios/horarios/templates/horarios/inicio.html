@@ -2,231 +2,328 @@
 {% load static %}
 
 {% block title %}
-Planificación Académica
+Inicio | Planificación Docente
 {% endblock %}
 
 
 {% block content %}
 
-<div class="row justify-content-center">
+<div class="app-page">
 
-    <div class="col-lg-10 col-xl-9">
+    <!-- ==============================================
+         ENCABEZADO
+         ============================================== -->
 
-        <div class="mb-4">
+    <div class="workspace-header">
 
-            <h1 class="h2 fw-semibold">
-                Planificación Académica
+        <div>
+
+            <div class="workspace-eyebrow">
+                PLANIFICACIÓN DOCENTE
+            </div>
+
+            <h1 class="workspace-title">
+                Planificación académica
             </h1>
 
-            <p class="text-secondary">
-                Seleccione la estructura académica para consultar
-                o construir la planificación de horarios.
+            <p class="workspace-description">
+                Seleccione el contexto académico para
+                consultar y gestionar la programación docente.
             </p>
-
-        </div>
-
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4 p-md-5">
-
-                <form method="GET" action="{% url 'planificacion' %}">
-
-                    <div class="row g-4">
-
-
-                        <!-- Centro Tutorial -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="centro"
-                                class="form-label"
-                            >
-                                Centro Tutorial
-                            </label>
-
-                            <select
-                                id="centro"
-                                name="centro"
-                                class="form-select"
-                                required
-                            >
-                                <option value="">
-                                    Seleccione...
-                                </option>
-
-                                {% for centro in centros %}
-                                    <option value="{{ centro.id }}">
-                                        {{ centro.nombre }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-
-                        </div>
-
-
-                        <!-- Sede -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="sede"
-                                class="form-label"
-                            >
-                                Sede
-                            </label>
-
-                            <select
-                                id="sede"
-                                name="sede"
-                                class="form-select"
-                                required
-                                disabled
-                            >
-                                <option value="">
-                                    Seleccione primero un Centro Tutorial...
-                                </option>
-                            </select>
-
-                        </div>
-
-
-                        <!-- Facultad -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="facultad"
-                                class="form-label"
-                            >
-                                Facultad
-                            </label>
-
-                            <select
-                                id="facultad"
-                                name="facultad"
-                                class="form-select"
-                                required
-                                disabled
-                            >
-                                <option value="">
-                                    Seleccione primero una Sede...
-                                </option>
-                            </select>
-
-                        </div>
-
-
-                        <!-- Carrera -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="carrera"
-                                class="form-label"
-                            >
-                                Carrera
-                            </label>
-
-                            <select
-                                id="carrera"
-                                name="carrera"
-                                class="form-select"
-                                required
-                                disabled
-                            >
-                                <option value="">
-                                    Seleccione primero una Facultad...
-                                </option>
-                            </select>
-
-                        </div>
-
-
-                        <!-- Periodo académico -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="periodo"
-                                class="form-label"
-                            >
-                                Periodo Académico
-                            </label>
-
-                            <select
-                                id="periodo"
-                                name="periodo"
-                                class="form-select"
-                                required
-                                disabled
-                            >
-                                <option value="">
-                                    Seleccione primero una Carrera...
-                                </option>
-                            </select>
-
-                        </div>
-
-
-                        <!-- Semestre -->
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="semestre"
-                                class="form-label"
-                            >
-                                Semestre
-                            </label>
-
-                            <select
-                                id="semestre"
-                                name="semestre"
-                                class="form-select"
-                                required
-                                disabled
-                            >
-                                <option value="">
-                                    Seleccione primero un Periodo...
-                                </option>
-                            </select>
-
-                        </div>
-
-                    </div>
-
-
-                    <hr class="my-4">
-
-
-                    <div class="d-flex justify-content-end">
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary px-4"
-                        >
-                            Ver planificación
-                        </button>
-
-                    </div>
-
-                </form>
-
-            </div>
 
         </div>
 
     </div>
 
-</div>
 
+    <!-- ==============================================
+         INDICADORES
+         ============================================== -->
+
+    <div class="metrics-grid">
+
+        <div class="metric-item">
+
+            <span class="metric-label">
+                Programas académicos
+            </span>
+
+            <strong class="metric-value">
+                {{ total_programas }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-item">
+
+            <span class="metric-label">
+                Profesores activos
+            </span>
+
+            <strong class="metric-value">
+                {{ total_profesores }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-item">
+
+            <span class="metric-label">
+                Aulas disponibles
+            </span>
+
+            <strong class="metric-value">
+                {{ total_aulas }}
+            </strong>
+
+        </div>
+
+
+        <div class="metric-item">
+
+            <span class="metric-label">
+                Horarios registrados
+            </span>
+
+            <strong class="metric-value">
+                {{ total_horarios }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==============================================
+         CONTEXTO ACADÉMICO
+         ============================================== -->
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    CONTEXTO DE TRABAJO
+                </span>
+
+                <h2>
+                    Consultar planificación
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="GET"
+            action="{% url 'planificacion' %}"
+            class="planning-form"
+        >
+
+            <div class="enterprise-form-grid">
+
+
+                <!-- CENTRO -->
+
+                <div class="enterprise-field field-wide">
+
+                    <label for="centro">
+                        Centro Tutorial
+                    </label>
+
+                    <select
+                        id="centro"
+                        name="centro"
+                        class="form-select"
+                        required
+                    >
+
+                        <option value="">
+                            Seleccione un Centro Tutorial...
+                        </option>
+
+                        {% for centro in centros %}
+
+                            <option value="{{ centro.id }}">
+                                {{ centro.nombre }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- FACULTAD -->
+
+                <div class="enterprise-field">
+
+                    <label for="facultad">
+                        Facultad
+                    </label>
+
+                    <select
+                        id="facultad"
+                        name="facultad"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione una facultad...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- PROGRAMA -->
+
+                <div class="enterprise-field">
+
+                    <label for="programa">
+                        Programa Académico
+                    </label>
+
+                    <select
+                        id="programa"
+                        name="programa"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un programa...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- PERIODO -->
+
+                <div class="enterprise-field">
+
+                    <label for="periodo">
+                        Periodo Académico
+                    </label>
+
+                    <select
+                        id="periodo"
+                        name="periodo"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un periodo...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- SEMESTRE -->
+
+                <div class="enterprise-field">
+
+                    <label for="semestre">
+                        Semestre
+                    </label>
+
+                    <select
+                        id="semestre"
+                        name="semestre"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione un semestre...
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- SEDE -->
+
+                <div class="enterprise-field field-wide">
+
+                    <label for="sede">
+                        Sede
+                    </label>
+
+                    <select
+                        id="sede"
+                        name="sede"
+                        class="form-select"
+                        required
+                        disabled
+                    >
+
+                        <option value="">
+                            Seleccione una sede...
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <!-- ======================================
+                 ACCIONES
+                 ====================================== -->
+
+            <div class="planning-actions">
+
+                <div class="form-help">
+
+                    La planificación se mostrará según
+                    el Centro, Programa, Periodo,
+                    Semestre y Sede seleccionados.
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="btn-enterprise-primary"
+                >
+                    Ver planificación
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
 
 {% endblock %}
 
+
 {% block scripts %}
 
-<script src="{% static 'horarios/js/selects.js' %}"></script>
+<script
+    src="{% static 'horarios/js/selects.js' %}"
+></script>
 
 {% endblock %}

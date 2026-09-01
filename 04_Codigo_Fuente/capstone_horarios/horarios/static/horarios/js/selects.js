@@ -3,258 +3,300 @@ document.addEventListener("DOMContentLoaded", function () {
     const centro = document.getElementById("centro");
     const sede = document.getElementById("sede");
     const facultad = document.getElementById("facultad");
-    const carrera = document.getElementById("carrera");
+    const programa = document.getElementById("programa");
     const periodo = document.getElementById("periodo");
     const semestre = document.getElementById("semestre");
 
+    if (!centro) {
+        return;
+    }
 
-    function limpiarSelect(select, mensaje) {
+
+    // =====================================================
+    // FUNCIONES AUXILIARES
+    // =====================================================
+
+    function limpiarSelect(
+        select,
+        texto = "Seleccione..."
+    ) {
+
         select.innerHTML = "";
 
         const option = document.createElement("option");
 
         option.value = "";
-        option.textContent = mensaje;
+        option.textContent = texto;
 
         select.appendChild(option);
+
         select.disabled = true;
     }
 
 
-    function cargarOpciones(select, datos, campoTexto) {
-
-        select.innerHTML = "";
-
-        const opcionInicial = document.createElement("option");
-
-        opcionInicial.value = "";
-        opcionInicial.textContent = "Seleccione...";
-
-        select.appendChild(opcionInicial);
-
-
-        datos.forEach(function (item) {
-
-            const option = document.createElement("option");
-
-            option.value = item.id;
-            option.textContent = item[campoTexto];
-
-            select.appendChild(option);
-
-        });
-
-
+    function habilitarSelect(select) {
         select.disabled = false;
     }
 
 
-    centro.addEventListener("change", async function () {
+    async function obtenerDatos(url) {
 
-        limpiarSelect(
-            sede,
-            "Seleccione primero un Centro Tutorial..."
-        );
+        const response = await fetch(url);
 
-        limpiarSelect(
-            facultad,
-            "Seleccione primero una Sede..."
-        );
-
-        limpiarSelect(
-            carrera,
-            "Seleccione primero una Facultad..."
-        );
-
-        limpiarSelect(
-            periodo,
-            "Seleccione primero una Carrera..."
-        );
-
-        limpiarSelect(
-            semestre,
-            "Seleccione primero un Periodo..."
-        );
-
-
-        if (!centro.value) {
-            return;
+        if (!response.ok) {
+            throw new Error(
+                "No fue posible obtener los datos."
+            );
         }
 
-
-        const response = await fetch(
-            `/ajax/sedes/?centro=${centro.value}`
-        );
-
-        const datos = await response.json();
-
-        cargarOpciones(
-            sede,
-            datos,
-            "nombre"
-        );
-
-    });
+        return await response.json();
+    }
 
 
-    sede.addEventListener("change", async function () {
+    function cargarOpciones(
+        select,
+        datos,
+        campoTexto = "nombre"
+    ) {
 
-        limpiarSelect(
-            facultad,
-            "Seleccione primero una Sede..."
-        );
-
-        limpiarSelect(
-            carrera,
-            "Seleccione primero una Facultad..."
-        );
-
-        limpiarSelect(
-            periodo,
-            "Seleccione primero una Carrera..."
-        );
-
-        limpiarSelect(
-            semestre,
-            "Seleccione primero un Periodo..."
-        );
-
-
-        if (!sede.value) {
-            return;
-        }
-
-
-        const response = await fetch(
-            `/ajax/facultades/?sede=${sede.value}`
-        );
-
-        const datos = await response.json();
-
-        cargarOpciones(
-            facultad,
-            datos,
-            "nombre"
-        );
-
-    });
-
-
-    facultad.addEventListener("change", async function () {
-
-        limpiarSelect(
-            carrera,
-            "Seleccione primero una Facultad..."
-        );
-
-        limpiarSelect(
-            periodo,
-            "Seleccione primero una Carrera..."
-        );
-
-        limpiarSelect(
-            semestre,
-            "Seleccione primero un Periodo..."
-        );
-
-
-        if (!facultad.value) {
-            return;
-        }
-
-
-        const response = await fetch(
-            `/ajax/carreras/?facultad=${facultad.value}`
-        );
-
-        const datos = await response.json();
-
-        cargarOpciones(
-            carrera,
-            datos,
-            "nombre"
-        );
-
-    });
-
-
-    carrera.addEventListener("change", async function () {
-
-        limpiarSelect(
-            periodo,
-            "Seleccione primero una Carrera..."
-        );
-
-        limpiarSelect(
-            semestre,
-            "Seleccione primero un Periodo..."
-        );
-
-
-        if (!carrera.value) {
-            return;
-        }
-
-
-        const response = await fetch(
-            `/ajax/periodos/?carrera=${carrera.value}`
-        );
-
-        const datos = await response.json();
-
-        cargarOpciones(
-            periodo,
-            datos,
-            "nombre"
-        );
-
-    });
-
-
-    periodo.addEventListener("change", async function () {
-
-        limpiarSelect(
-            semestre,
-            "Seleccione primero un Periodo..."
-        );
-
-
-        if (!periodo.value || !carrera.value) {
-            return;
-        }
-
-
-        const response = await fetch(
-            `/ajax/semestres/?carrera=${carrera.value}&periodo=${periodo.value}`
-        );
-
-        const datos = await response.json();
-
-
-        semestre.innerHTML = "";
-
-        const opcionInicial = document.createElement("option");
-
-        opcionInicial.value = "";
-        opcionInicial.textContent = "Seleccione...";
-
-        semestre.appendChild(opcionInicial);
-
-
-        datos.forEach(function (item) {
+        datos.forEach((registro) => {
 
             const option = document.createElement("option");
 
-            option.value = item.id;
-            option.textContent = `Semestre ${item.numero}`;
+            option.value = registro.id;
+            option.textContent = registro[campoTexto];
 
-            semestre.appendChild(option);
-
+            select.appendChild(option);
         });
 
+        habilitarSelect(select);
+    }
 
-        semestre.disabled = false;
 
-    });
+    // =====================================================
+    // CENTRO TUTORIAL
+    // =====================================================
+
+    centro.addEventListener(
+        "change",
+        async function () {
+
+            const centroId = this.value;
+
+            limpiarSelect(
+                sede,
+                "Seleccione una sede..."
+            );
+
+            limpiarSelect(
+                facultad,
+                "Seleccione una facultad..."
+            );
+
+            limpiarSelect(
+                programa,
+                "Seleccione un programa..."
+            );
+
+            limpiarSelect(
+                periodo,
+                "Seleccione un periodo..."
+            );
+
+            limpiarSelect(
+                semestre,
+                "Seleccione un semestre..."
+            );
+
+            if (!centroId) {
+                return;
+            }
+
+            try {
+
+                // -----------------------------------------
+                // SEDES
+                // -----------------------------------------
+
+                const sedes = await obtenerDatos(
+                    `/ajax/sedes/?centro=${centroId}`
+                );
+
+                cargarOpciones(
+                    sede,
+                    sedes
+                );
+
+
+                // -----------------------------------------
+                // FACULTADES
+                // -----------------------------------------
+
+                const facultades = await obtenerDatos(
+                    `/ajax/facultades/?centro=${centroId}`
+                );
+
+                cargarOpciones(
+                    facultad,
+                    facultades
+                );
+
+            } catch (error) {
+
+                console.error(error);
+            }
+        }
+    );
+
+
+    // =====================================================
+    // FACULTAD
+    // =====================================================
+
+    facultad.addEventListener(
+        "change",
+        async function () {
+
+            const facultadId = this.value;
+            const centroId = centro.value;
+
+            limpiarSelect(
+                programa,
+                "Seleccione un programa..."
+            );
+
+            limpiarSelect(
+                periodo,
+                "Seleccione un periodo..."
+            );
+
+            limpiarSelect(
+                semestre,
+                "Seleccione un semestre..."
+            );
+
+            if (
+                !facultadId
+                || !centroId
+            ) {
+                return;
+            }
+
+            try {
+
+                const programas = await obtenerDatos(
+                    `/ajax/programas/`
+                    + `?facultad=${facultadId}`
+                    + `&centro=${centroId}`
+                );
+
+                cargarOpciones(
+                    programa,
+                    programas
+                );
+
+            } catch (error) {
+
+                console.error(error);
+            }
+        }
+    );
+
+
+    // =====================================================
+    // PROGRAMA ACADÉMICO
+    // =====================================================
+
+    programa.addEventListener(
+        "change",
+        async function () {
+
+            const programaId = this.value;
+            const centroId = centro.value;
+
+            limpiarSelect(
+                periodo,
+                "Seleccione un periodo..."
+            );
+
+            limpiarSelect(
+                semestre,
+                "Seleccione un semestre..."
+            );
+
+            if (
+                !programaId
+                || !centroId
+            ) {
+                return;
+            }
+
+            try {
+
+                const periodos = await obtenerDatos(
+                    `/ajax/periodos/`
+                    + `?programa=${programaId}`
+                    + `&centro=${centroId}`
+                );
+
+                cargarOpciones(
+                    periodo,
+                    periodos
+                );
+
+            } catch (error) {
+
+                console.error(error);
+            }
+        }
+    );
+
+
+    // =====================================================
+    // PERIODO ACADÉMICO
+    // =====================================================
+
+    periodo.addEventListener(
+        "change",
+        async function () {
+
+            const periodoId = this.value;
+            const programaId = programa.value;
+            const centroId = centro.value;
+
+            limpiarSelect(
+                semestre,
+                "Seleccione un semestre..."
+            );
+
+            if (
+                !periodoId
+                || !programaId
+                || !centroId
+            ) {
+                return;
+            }
+
+            try {
+
+                const semestres = await obtenerDatos(
+                    `/ajax/semestres/`
+                    + `?programa=${programaId}`
+                    + `&centro=${centroId}`
+                    + `&periodo=${periodoId}`
+                );
+
+                cargarOpciones(
+                    semestre,
+                    semestres,
+                    "nombre"
+                );
+
+            } catch (error) {
+
+                console.error(error);
+            }
+        }
+    );
 
 });

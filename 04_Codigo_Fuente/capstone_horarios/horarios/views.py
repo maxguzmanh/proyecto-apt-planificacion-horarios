@@ -58,8 +58,13 @@ def agregar_errores_formulario(form, error):
 
 @login_required
 def inicio(request):
+
     context = {
         "centros": CentroTutorial.objects.filter(activo=True).order_by("nombre"),
+        "total_programas": ProgramaAcademico.objects.filter(activo=True).count(),
+        "total_profesores": Profesor.objects.filter(activo=True).count(),
+        "total_aulas": Aula.objects.filter(activo=True).count(),
+        "total_horarios": Horario.objects.filter(activo=True).count(),
     }
 
     return render(
@@ -366,11 +371,29 @@ def cargar_programas(request):
 
 @login_required
 def cargar_periodos(request):
+
+    centro_id = request.GET.get("centro")
+    programa_id = request.GET.get("programa")
+
     periodos = PeriodoAcademico.objects.filter(
         activo=True,
-    ).values(
-        "id",
-        "nombre",
+    )
+
+    if centro_id and programa_id:
+
+        periodos = periodos.filter(
+            grupos__centro_tutorial_id=centro_id,
+            grupos__programa_id=programa_id,
+            grupos__activo=True,
+        )
+
+    periodos = (
+        periodos.distinct()
+        .order_by("-codigo")
+        .values(
+            "id",
+            "nombre",
+        )
     )
 
     return JsonResponse(
@@ -381,23 +404,42 @@ def cargar_periodos(request):
 
 @login_required
 def cargar_semestres(request):
-    programa_id = request.GET.get("programa") or request.GET.get("carrera")
+
+    centro_id = request.GET.get("centro")
+    programa_id = request.GET.get("programa")
+    periodo_id = request.GET.get("periodo")
 
     semestres = Semestre.objects.all()
 
-    if programa_id:
+    if centro_id and programa_id and periodo_id:
+
+        semestres = semestres.filter(
+            grupos__centro_tutorial_id=centro_id,
+            grupos__programa_id=programa_id,
+            grupos__periodo_id=periodo_id,
+            grupos__activo=True,
+        )
+
+    elif programa_id:
+
         semestres = semestres.filter(
             planes_estudio__programa_id=programa_id,
             planes_estudio__activo=True,
-        ).distinct()
+        )
 
-    semestres = semestres.values(
-        "id",
-        "numero",
-    )
+    semestres = semestres.distinct().order_by("numero")
+
+    datos = [
+        {
+            "id": semestre.id,
+            "numero": semestre.numero,
+            "nombre": semestre.get_numero_display(),
+        }
+        for semestre in semestres
+    ]
 
     return JsonResponse(
-        list(semestres),
+        datos,
         safe=False,
     )
 
