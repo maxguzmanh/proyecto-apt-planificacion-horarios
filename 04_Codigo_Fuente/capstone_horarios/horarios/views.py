@@ -1,9 +1,7 @@
 from django.contrib import messages
-from django.contrib.auth.decorators import (
-    login_required,
-    permission_required,
-)
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
+from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -11,16 +9,22 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from academico.models import (
+    Asignatura,
+    Aula,
     CentroTutorial,
-    Sede,
     Facultad,
-    Carrera,
+    Modalidad,
     PeriodoAcademico,
+    PlanEstudioAsignatura,
+    Profesor,
+    ProgramaAcademico,
+    ProgramaCentroTutorial,
+    Sede,
     Semestre,
 )
 
 from .forms import HorarioForm
-from .models import Horario
+from .models import Grupo, Horario, OfertaGrupo
 
 # ==========================================================
 # CONFIGURACIÓN DEL CALENDARIO
@@ -32,15 +36,30 @@ PIXELES_POR_MINUTO = 0.75
 
 
 # ==========================================================
+# FUNCIONES AUXILIARES
+# ==========================================================
+
+
+def agregar_errores_formulario(form, error):
+    if hasattr(error, "message_dict"):
+        for campo, errores in error.message_dict.items():
+            campo_formulario = campo if campo in form.fields else None
+
+            for mensaje in errores:
+                form.add_error(campo_formulario, mensaje)
+    else:
+        form.add_error(None, error)
+
+
+# ==========================================================
 # PANTALLA DE INICIO
 # ==========================================================
 
 
 @login_required
 def inicio(request):
-
     context = {
-        "centros": CentroTutorial.objects.all(),
+        "centros": CentroTutorial.objects.filter(activo=True).order_by("nombre"),
     }
 
     return render(
@@ -61,11 +80,10 @@ def inicio(request):
     raise_exception=True,
 )
 def planificacion(request):
-
     centro_id = request.GET.get("centro")
     sede_id = request.GET.get("sede")
     facultad_id = request.GET.get("facultad")
-    carrera_id = request.GET.get("carrera")
+    programa_id = request.GET.get("programa") or request.GET.get("carrera")
     periodo_id = request.GET.get("periodo")
     semestre_id = request.GET.get("semestre")
 
@@ -74,7 +92,7 @@ def planificacion(request):
             centro_id,
             sede_id,
             facultad_id,
-            carrera_id,
+            programa_id,
             periodo_id,
             semestre_id,
         ]
@@ -84,33 +102,34 @@ def planificacion(request):
     centro = get_object_or_404(
         CentroTutorial,
         pk=centro_id,
-    )
-
-    # ------------------------------------------------------
-    # Validamos la estructura académica seleccionada
-    # ------------------------------------------------------
-
-    centro = get_object_or_404(
-        CentroTutorial,
-        pk=centro_id,
+        activo=True,
     )
 
     sede = get_object_or_404(
         Sede,
         pk=sede_id,
         centro_tutorial=centro,
+        activo=True,
     )
 
     facultad = get_object_or_404(
         Facultad,
         pk=facultad_id,
-        sede=sede,
+        activo=True,
     )
 
-    carrera = get_object_or_404(
-        Carrera,
-        pk=carrera_id,
+    programa = get_object_or_404(
+        ProgramaAcademico,
+        pk=programa_id,
         facultad=facultad,
+        activo=True,
+    )
+
+    get_object_or_404(
+        ProgramaCentroTutorial,
+        programa=programa,
+        centro_tutorial=centro,
+        activo=True,
     )
 
     periodo = get_object_or_404(
@@ -121,33 +140,34 @@ def planificacion(request):
     semestre = get_object_or_404(
         Semestre,
         pk=semestre_id,
-        carrera=carrera,
-        periodo=periodo,
     )
-
-    # ------------------------------------------------------
-    # Obtenemos los horarios correspondientes
-    # ------------------------------------------------------
 
     horarios = list(
         Horario.objects.filter(
-            periodo=periodo,
-            asignatura__semestre=semestre,
+            activo=True,
+            oferta__activo=True,
+            oferta__periodo=periodo,
+            oferta__grupos__centro_tutorial=centro,
+            oferta__grupos__programa=programa,
+            oferta__grupos__semestre=semestre,
+            aula__sede=sede,
         )
         .select_related(
-            "asignatura",
-            "profesor",
+            "oferta",
+            "oferta__asignatura",
+            "oferta__profesor",
+            "oferta__periodo",
+            "oferta__modalidad",
             "aula",
+            "aula__sede",
         )
+        .prefetch_related("oferta__grupos")
+        .distinct()
         .order_by(
             "dia",
             "hora_inicio",
         )
     )
-
-    # ------------------------------------------------------
-    # Días mostrados en el calendario
-    # ------------------------------------------------------
 
     dias = [
         ("LU", "Lunes"),
@@ -156,6 +176,7 @@ def planificacion(request):
         ("JU", "Jueves"),
         ("VI", "Viernes"),
         ("SA", "Sábado"),
+        ("DO", "Domingo"),
     ]
 
     inicio_calendario = HORA_INICIO_CALENDARIO * 60
@@ -163,19 +184,13 @@ def planificacion(request):
 
     altura_calendario = int((fin_calendario - inicio_calendario) * PIXELES_POR_MINUTO)
 
-    # ------------------------------------------------------
-    # Construcción de las etiquetas de las horas
-    # ------------------------------------------------------
-
     horas_calendario = []
 
     for hora in range(
         HORA_INICIO_CALENDARIO,
         HORA_FIN_CALENDARIO,
     ):
-
         minutos = hora * 60
-
         top = int((minutos - inicio_calendario) * PIXELES_POR_MINUTO)
 
         horas_calendario.append(
@@ -185,18 +200,12 @@ def planificacion(request):
             }
         )
 
-    # ------------------------------------------------------
-    # Construcción de los bloques del calendario
-    # ------------------------------------------------------
-
     dias_calendario = []
 
     for codigo, nombre in dias:
-
         bloques = []
 
         for horario in horarios:
-
             if horario.dia != codigo:
                 continue
 
@@ -204,7 +213,6 @@ def planificacion(request):
 
             fin = horario.hora_fin.hour * 60 + horario.hora_fin.minute
 
-            # Solo mostramos horarios dentro del rango visible.
             if fin <= inicio_calendario or inicio >= fin_calendario:
                 continue
 
@@ -245,7 +253,10 @@ def planificacion(request):
         "centro": centro,
         "sede": sede,
         "facultad": facultad,
-        "carrera": carrera,
+        "programa": programa,
+        # Alias temporal para que los templates antiguos no fallen
+        # mientras reemplazamos Carrera por Programa Académico.
+        "carrera": programa,
         "periodo": periodo,
         "semestre": semestre,
         "dias_calendario": dias_calendario,
@@ -267,10 +278,12 @@ def planificacion(request):
 
 @login_required
 def cargar_sedes(request):
-
     centro_id = request.GET.get("centro")
 
-    sedes = Sede.objects.filter(centro_tutorial_id=centro_id).values(
+    sedes = Sede.objects.filter(
+        centro_tutorial_id=centro_id,
+        activo=True,
+    ).values(
         "id",
         "nombre",
     )
@@ -283,12 +296,31 @@ def cargar_sedes(request):
 
 @login_required
 def cargar_facultades(request):
-
+    centro_id = request.GET.get("centro")
     sede_id = request.GET.get("sede")
 
-    facultades = Facultad.objects.filter(sede_id=sede_id).values(
-        "id",
-        "nombre",
+    if not centro_id and sede_id:
+        centro_id = (
+            Sede.objects.filter(pk=sede_id)
+            .values_list("centro_tutorial_id", flat=True)
+            .first()
+        )
+
+    if not centro_id:
+        return JsonResponse([], safe=False)
+
+    facultades = (
+        Facultad.objects.filter(
+            activo=True,
+            programas_academicos__activo=True,
+            programas_academicos__centros_tutoriales__centro_tutorial_id=centro_id,
+            programas_academicos__centros_tutoriales__activo=True,
+        )
+        .distinct()
+        .values(
+            "id",
+            "nombre",
+        )
     )
 
     return JsonResponse(
@@ -298,33 +330,47 @@ def cargar_facultades(request):
 
 
 @login_required
-def cargar_carreras(request):
-
+def cargar_programas(request):
     facultad_id = request.GET.get("facultad")
+    centro_id = request.GET.get("centro")
+    sede_id = request.GET.get("sede")
 
-    carreras = Carrera.objects.filter(facultad_id=facultad_id).values(
+    if not centro_id and sede_id:
+        centro_id = (
+            Sede.objects.filter(pk=sede_id)
+            .values_list("centro_tutorial_id", flat=True)
+            .first()
+        )
+
+    programas = ProgramaAcademico.objects.filter(
+        facultad_id=facultad_id,
+        activo=True,
+    )
+
+    if centro_id:
+        programas = programas.filter(
+            centros_tutoriales__centro_tutorial_id=centro_id,
+            centros_tutoriales__activo=True,
+        )
+
+    programas = programas.distinct().values(
         "id",
         "nombre",
     )
 
     return JsonResponse(
-        list(carreras),
+        list(programas),
         safe=False,
     )
 
 
 @login_required
 def cargar_periodos(request):
-
-    carrera_id = request.GET.get("carrera")
-
-    periodos = (
-        PeriodoAcademico.objects.filter(semestres__carrera_id=carrera_id)
-        .distinct()
-        .values(
-            "id",
-            "nombre",
-        )
+    periodos = PeriodoAcademico.objects.filter(
+        activo=True,
+    ).values(
+        "id",
+        "nombre",
     )
 
     return JsonResponse(
@@ -335,20 +381,55 @@ def cargar_periodos(request):
 
 @login_required
 def cargar_semestres(request):
+    programa_id = request.GET.get("programa") or request.GET.get("carrera")
 
-    carrera_id = request.GET.get("carrera")
-    periodo_id = request.GET.get("periodo")
+    semestres = Semestre.objects.all()
 
-    semestres = Semestre.objects.filter(
-        carrera_id=carrera_id,
-        periodo_id=periodo_id,
-    ).values(
+    if programa_id:
+        semestres = semestres.filter(
+            planes_estudio__programa_id=programa_id,
+            planes_estudio__activo=True,
+        ).distinct()
+
+    semestres = semestres.values(
         "id",
         "numero",
     )
 
     return JsonResponse(
         list(semestres),
+        safe=False,
+    )
+
+
+@login_required
+def cargar_grupos(request):
+    centro_id = request.GET.get("centro")
+    programa_id = request.GET.get("programa") or request.GET.get("carrera")
+    periodo_id = request.GET.get("periodo")
+    semestre_id = request.GET.get("semestre")
+
+    grupos = Grupo.objects.filter(activo=True)
+
+    if centro_id:
+        grupos = grupos.filter(centro_tutorial_id=centro_id)
+
+    if programa_id:
+        grupos = grupos.filter(programa_id=programa_id)
+
+    if periodo_id:
+        grupos = grupos.filter(periodo_id=periodo_id)
+
+    if semestre_id:
+        grupos = grupos.filter(semestre_id=semestre_id)
+
+    grupos = grupos.values(
+        "id",
+        "codigo",
+    )
+
+    return JsonResponse(
+        list(grupos),
         safe=False,
     )
 
@@ -364,10 +445,29 @@ def cargar_semestres(request):
     raise_exception=True,
 )
 def nueva_asignacion(request):
+    periodo_id = request.GET.get("periodo") or request.POST.get("periodo")
+    semestre_id = request.GET.get("semestre") or request.POST.get("semestre")
+    sede_id = request.GET.get("sede") or request.POST.get("sede")
+    programa_id = (
+        request.GET.get("programa")
+        or request.GET.get("carrera")
+        or request.POST.get("programa")
+        or request.POST.get("carrera")
+    )
 
-    periodo_id = request.GET.get("periodo")
-    semestre_id = request.GET.get("semestre")
-    sede_id = request.GET.get("sede")
+    if not all(
+        [
+            periodo_id,
+            semestre_id,
+            sede_id,
+            programa_id,
+        ]
+    ):
+        messages.error(
+            request,
+            "Falta información académica para crear la asignación.",
+        )
+        return redirect("inicio")
 
     periodo = get_object_or_404(
         PeriodoAcademico,
@@ -377,59 +477,54 @@ def nueva_asignacion(request):
     semestre = get_object_or_404(
         Semestre,
         pk=semestre_id,
-        periodo=periodo,
     )
 
     sede = get_object_or_404(
         Sede,
         pk=sede_id,
+        activo=True,
     )
 
-    volver_a = request.POST.get("volver_a") or request.META.get("HTTP_REFERER") or "/"
+    programa = get_object_or_404(
+        ProgramaAcademico,
+        pk=programa_id,
+        activo=True,
+    )
+
+    centro = sede.centro_tutorial
+
+    get_object_or_404(
+        ProgramaCentroTutorial,
+        programa=programa,
+        centro_tutorial=centro,
+        activo=True,
+    )
+
+    volver_a = (
+        request.POST.get("volver_a")
+        or request.GET.get("volver_a")
+        or request.META.get("HTTP_REFERER")
+        or "/"
+    )
 
     if request.method == "POST":
-
         form = HorarioForm(
             request.POST,
+            programa=programa,
             semestre=semestre,
+            centro_tutorial=centro,
             sede=sede,
             periodo=periodo,
         )
 
         if form.is_valid():
-
             horario = form.save(commit=False)
 
-            horario.periodo = periodo
-
             try:
-
                 horario.full_clean()
-
             except ValidationError as error:
-
-                if hasattr(error, "message_dict"):
-
-                    for campo, errores in error.message_dict.items():
-
-                        campo_formulario = campo if campo in form.fields else None
-
-                        for mensaje in errores:
-
-                            form.add_error(
-                                campo_formulario,
-                                mensaje,
-                            )
-
-                else:
-
-                    form.add_error(
-                        None,
-                        error,
-                    )
-
+                agregar_errores_formulario(form, error)
             else:
-
                 horario.save()
 
                 messages.success(
@@ -438,11 +533,11 @@ def nueva_asignacion(request):
                 )
 
                 return redirect(volver_a)
-
     else:
-
         form = HorarioForm(
+            programa=programa,
             semestre=semestre,
+            centro_tutorial=centro,
             sede=sede,
             periodo=periodo,
         )
@@ -452,6 +547,9 @@ def nueva_asignacion(request):
         "periodo": periodo,
         "semestre": semestre,
         "sede": sede,
+        "programa": programa,
+        "carrera": programa,
+        "centro": centro,
         "volver_a": volver_a,
     }
 
@@ -473,62 +571,53 @@ def nueva_asignacion(request):
     raise_exception=True,
 )
 def editar_asignacion(request, horario_id):
-
     horario = get_object_or_404(
-        Horario,
+        Horario.objects.select_related(
+            "oferta",
+            "oferta__periodo",
+            "aula",
+            "aula__sede",
+            "aula__sede__centro_tutorial",
+        ).prefetch_related("oferta__grupos"),
         pk=horario_id,
     )
 
-    periodo = horario.periodo
-    semestre = horario.asignatura.semestre
+    grupo_referencia = horario.oferta.grupos.first()
+
+    if not grupo_referencia:
+        messages.error(
+            request,
+            "La oferta académica no tiene grupos asociados.",
+        )
+        return redirect("inicio")
+
+    periodo = horario.oferta.periodo
+    semestre = grupo_referencia.semestre
+    programa = grupo_referencia.programa
+    centro = grupo_referencia.centro_tutorial
     sede = horario.aula.sede
 
     volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
 
     if request.method == "POST":
-
         form = HorarioForm(
             request.POST,
             instance=horario,
+            programa=programa,
             semestre=semestre,
+            centro_tutorial=centro,
             sede=sede,
             periodo=periodo,
         )
 
         if form.is_valid():
-
             horario_editado = form.save(commit=False)
 
-            horario_editado.periodo = periodo
-
             try:
-
                 horario_editado.full_clean()
-
             except ValidationError as error:
-
-                if hasattr(error, "message_dict"):
-
-                    for campo, errores in error.message_dict.items():
-
-                        campo_formulario = campo if campo in form.fields else None
-
-                        for mensaje in errores:
-
-                            form.add_error(
-                                campo_formulario,
-                                mensaje,
-                            )
-
-                else:
-
-                    form.add_error(
-                        None,
-                        error,
-                    )
-
+                agregar_errores_formulario(form, error)
             else:
-
                 horario_editado.save()
 
                 messages.success(
@@ -537,12 +626,12 @@ def editar_asignacion(request, horario_id):
                 )
 
                 return redirect(volver_a)
-
     else:
-
         form = HorarioForm(
             instance=horario,
+            programa=programa,
             semestre=semestre,
+            centro_tutorial=centro,
             sede=sede,
             periodo=periodo,
         )
@@ -553,6 +642,9 @@ def editar_asignacion(request, horario_id):
         "periodo": periodo,
         "semestre": semestre,
         "sede": sede,
+        "programa": programa,
+        "carrera": programa,
+        "centro": centro,
         "volver_a": volver_a,
     }
 
@@ -574,7 +666,6 @@ def editar_asignacion(request, horario_id):
     raise_exception=True,
 )
 def eliminar_asignacion(request, horario_id):
-
     horario = get_object_or_404(
         Horario,
         pk=horario_id,
@@ -583,7 +674,6 @@ def eliminar_asignacion(request, horario_id):
     volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
 
     if request.method == "POST":
-
         horario.delete()
 
         messages.success(
@@ -606,7 +696,8 @@ def eliminar_asignacion(request, horario_id):
 
 
 # ==========================================================
-# EXPORTAR PLANIFICACIÓN A EXCEL
+# EXPORTAR PROGRAMACIÓN A EXCEL
+# ESTRUCTURA BASADA EN EL ARCHIVO REAL DE LA UNIVERSIDAD
 # ==========================================================
 
 
@@ -616,181 +707,161 @@ def eliminar_asignacion(request, horario_id):
     raise_exception=True,
 )
 def exportar_excel(request):
-
     centro_id = request.GET.get("centro")
     sede_id = request.GET.get("sede")
     facultad_id = request.GET.get("facultad")
-    carrera_id = request.GET.get("carrera")
+    programa_id = request.GET.get("programa") or request.GET.get("carrera")
     periodo_id = request.GET.get("periodo")
     semestre_id = request.GET.get("semestre")
+    asignatura_id = request.GET.get("asignatura")
+    profesor_id = request.GET.get("profesor")
+    modalidad_id = request.GET.get("modalidad")
+    grupo_id = request.GET.get("grupo")
+    aula_id = request.GET.get("aula")
+    area_id = request.GET.get("area")
+    dia = request.GET.get("dia")
 
-    # ------------------------------------------------------
-    # Validar parámetros
-    # ------------------------------------------------------
-
-    if not all(
-        [
-            centro_id,
-            sede_id,
-            facultad_id,
-            carrera_id,
-            periodo_id,
-            semestre_id,
-        ]
-    ):
-        return redirect("inicio")
-
-    # ------------------------------------------------------
-    # Validar estructura académica
-    # ------------------------------------------------------
-
-    centro = get_object_or_404(
-        CentroTutorial,
-        pk=centro_id,
+    horarios_exportacion = Horario.objects.filter(
+        activo=True,
+    ).select_related(
+        "aula",
+        "aula__sede",
     )
 
-    sede = get_object_or_404(
-        Sede,
-        pk=sede_id,
-        centro_tutorial=centro,
+    if sede_id:
+        horarios_exportacion = horarios_exportacion.filter(aula__sede_id=sede_id)
+
+    if aula_id:
+        horarios_exportacion = horarios_exportacion.filter(aula_id=aula_id)
+
+    if dia:
+        horarios_exportacion = horarios_exportacion.filter(dia=dia)
+
+    ofertas_grupo = OfertaGrupo.objects.filter(
+        oferta__activo=True,
+        grupo__activo=True,
+        oferta__horarios__activo=True,
     )
 
-    facultad = get_object_or_404(
-        Facultad,
-        pk=facultad_id,
-        sede=sede,
-    )
+    if centro_id:
+        ofertas_grupo = ofertas_grupo.filter(grupo__centro_tutorial_id=centro_id)
 
-    carrera = get_object_or_404(
-        Carrera,
-        pk=carrera_id,
-        facultad=facultad,
-    )
+    if facultad_id:
+        ofertas_grupo = ofertas_grupo.filter(grupo__programa__facultad_id=facultad_id)
 
-    periodo = get_object_or_404(
-        PeriodoAcademico,
-        pk=periodo_id,
-    )
+    if programa_id:
+        ofertas_grupo = ofertas_grupo.filter(grupo__programa_id=programa_id)
 
-    semestre = get_object_or_404(
-        Semestre,
-        pk=semestre_id,
-        carrera=carrera,
-        periodo=periodo,
-    )
-
-    # ------------------------------------------------------
-    # Obtener horarios
-    # ------------------------------------------------------
-
-    horarios = (
-        Horario.objects.filter(
-            periodo=periodo,
-            asignatura__semestre=semestre,
+    if periodo_id:
+        ofertas_grupo = ofertas_grupo.filter(
+            oferta__periodo_id=periodo_id,
+            grupo__periodo_id=periodo_id,
         )
-        .select_related(
-            "asignatura",
-            "profesor",
-            "aula",
+
+    if semestre_id:
+        ofertas_grupo = ofertas_grupo.filter(grupo__semestre_id=semestre_id)
+
+    if asignatura_id:
+        ofertas_grupo = ofertas_grupo.filter(oferta__asignatura_id=asignatura_id)
+
+    if profesor_id:
+        ofertas_grupo = ofertas_grupo.filter(oferta__profesor_id=profesor_id)
+
+    if modalidad_id:
+        ofertas_grupo = ofertas_grupo.filter(oferta__modalidad_id=modalidad_id)
+
+    if grupo_id:
+        ofertas_grupo = ofertas_grupo.filter(grupo_id=grupo_id)
+
+    if sede_id:
+        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__aula__sede_id=sede_id)
+
+    if aula_id:
+        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__aula_id=aula_id)
+
+    if dia:
+        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__dia=dia)
+
+    ofertas_grupo = (
+        ofertas_grupo.select_related(
+            "oferta",
+            "oferta__asignatura",
+            "oferta__profesor",
+            "oferta__periodo",
+            "oferta__modalidad",
+            "grupo",
+            "grupo__centro_tutorial",
+            "grupo__programa",
+            "grupo__programa__facultad",
+            "grupo__semestre",
         )
+        .prefetch_related(
+            Prefetch(
+                "oferta__horarios",
+                queryset=horarios_exportacion,
+                to_attr="horarios_exportacion",
+            )
+        )
+        .distinct()
         .order_by(
-            "dia",
-            "hora_inicio",
+            "grupo__centro_tutorial__nombre",
+            "grupo__programa__nombre",
+            "grupo__semestre__numero",
+            "oferta__asignatura__nombre",
+            "grupo__codigo",
         )
     )
 
-    # ------------------------------------------------------
-    # Crear libro Excel
-    # ------------------------------------------------------
+    planes = PlanEstudioAsignatura.objects.filter(
+        activo=True,
+    ).select_related(
+        "area_academica",
+    )
+
+    if programa_id:
+        planes = planes.filter(programa_id=programa_id)
+
+    if semestre_id:
+        planes = planes.filter(semestre_id=semestre_id)
+
+    if asignatura_id:
+        planes = planes.filter(asignatura_id=asignatura_id)
+
+    mapa_planes = {
+        (
+            plan.programa_id,
+            plan.asignatura_id,
+            plan.semestre_id,
+        ): plan
+        for plan in planes
+    }
 
     workbook = Workbook()
-
     hoja = workbook.active
-    hoja.title = "Planificación"
-
-    # ------------------------------------------------------
-    # Título
-    # ------------------------------------------------------
-
-    hoja.merge_cells("A1:H1")
-
-    titulo = hoja["A1"]
-
-    titulo.value = "PLANIFICACIÓN DE HORARIOS"
-
-    titulo.font = Font(
-        bold=True,
-        size=16,
-        color="FFFFFF",
-    )
-
-    titulo.fill = PatternFill(
-        fill_type="solid",
-        fgColor="0D6EFD",
-    )
-
-    titulo.alignment = Alignment(
-        horizontal="center",
-        vertical="center",
-    )
-
-    hoja.row_dimensions[1].height = 28
-
-    # ------------------------------------------------------
-    # Información académica
-    # ------------------------------------------------------
-
-    datos_academicos = [
-        ("Centro Tutorial", centro.nombre),
-        ("Sede", sede.nombre),
-        ("Facultad", facultad.nombre),
-        ("Carrera", carrera.nombre),
-        ("Periodo Académico", periodo.nombre),
-        ("Semestre", f"Semestre {semestre.numero}"),
-    ]
-
-    fila = 3
-
-    for etiqueta, valor in datos_academicos:
-
-        hoja.cell(
-            row=fila,
-            column=1,
-            value=etiqueta,
-        ).font = Font(bold=True)
-
-        hoja.cell(
-            row=fila,
-            column=2,
-            value=valor,
-        )
-
-        fila += 1
-
-    # ------------------------------------------------------
-    # Encabezados
-    # ------------------------------------------------------
-
-    fila_encabezado = 10
+    hoja.title = "PROGRAMACIÓN"
 
     encabezados = [
-        "Código",
+        "Lugar de Desarrollo y/o Centro Tutorial",
+        "Facultad",
+        "Modalidad",
+        "Programa Académico",
+        "SEM",
         "Asignatura",
+        "Grupo",
+        "Cupos",
+        "# Créditos",
         "Profesor",
-        "Identificación profesor",
-        "Aula",
         "Día",
         "Hora inicio",
-        "Hora término",
+        "Hora final",
+        "Aula",
+        "Sede",
+        "Área Académica",
     ]
 
-    for columna, encabezado in enumerate(
-        encabezados,
-        start=1,
-    ):
-
+    for columna, encabezado in enumerate(encabezados, start=1):
         celda = hoja.cell(
-            row=fila_encabezado,
+            row=1,
             column=columna,
             value=encabezado,
         )
@@ -808,125 +879,82 @@ def exportar_excel(request):
         celda.alignment = Alignment(
             horizontal="center",
             vertical="center",
+            wrap_text=True,
         )
 
-    # ------------------------------------------------------
-    # Datos de los horarios
-    # ------------------------------------------------------
+    fila_actual = 2
 
-    fila_actual = fila_encabezado + 1
+    for oferta_grupo in ofertas_grupo:
+        oferta = oferta_grupo.oferta
+        grupo = oferta_grupo.grupo
 
-    for horario in horarios:
-
-        hoja.cell(
-            row=fila_actual,
-            column=1,
-            value=horario.asignatura.codigo,
+        plan = mapa_planes.get(
+            (
+                grupo.programa_id,
+                oferta.asignatura_id,
+                grupo.semestre_id,
+            )
         )
 
-        hoja.cell(
-            row=fila_actual,
-            column=2,
-            value=horario.asignatura.nombre,
-        )
+        if area_id:
+            if not plan or str(plan.area_academica_id) != str(area_id):
+                continue
 
-        hoja.cell(
-            row=fila_actual,
-            column=3,
-            value=str(horario.profesor),
-        )
+        for horario in oferta.horarios_exportacion:
+            valores = [
+                grupo.centro_tutorial.nombre,
+                grupo.programa.facultad.nombre,
+                oferta.modalidad.nombre,
+                grupo.programa.nombre,
+                grupo.semestre.get_numero_display(),
+                oferta.asignatura.nombre,
+                grupo.codigo,
+                oferta_grupo.cupos,
+                plan.creditos if plan else "",
+                str(oferta.profesor),
+                horario.get_dia_display(),
+                horario.hora_inicio.strftime("%H:%M"),
+                horario.hora_fin.strftime("%H:%M"),
+                horario.aula.nombre,
+                horario.aula.sede.nombre,
+                (plan.area_academica.nombre if plan and plan.area_academica else ""),
+            ]
 
-        # Identificación del profesor
-        hoja.cell(
-            row=fila_actual,
-            column=4,
-            value=str(horario.profesor.identificacion),
-        )
+            for columna, valor in enumerate(valores, start=1):
+                hoja.cell(
+                    row=fila_actual,
+                    column=columna,
+                    value=valor,
+                )
 
-        hoja.cell(
-            row=fila_actual,
-            column=5,
-            value=horario.aula.nombre,
-        )
-
-        hoja.cell(
-            row=fila_actual,
-            column=6,
-            value=horario.get_dia_display(),
-        )
-
-        hoja.cell(
-            row=fila_actual,
-            column=7,
-            value=horario.hora_inicio.strftime("%H:%M"),
-        )
-
-        hoja.cell(
-            row=fila_actual,
-            column=8,
-            value=horario.hora_fin.strftime("%H:%M"),
-        )
-
-        fila_actual += 1
-
-    # ------------------------------------------------------
-    # Ancho de columnas
-    # ------------------------------------------------------
+            fila_actual += 1
 
     anchos = {
-        "A": 15,
-        "B": 30,
-        "C": 25,
-        "D": 24,
-        "E": 15,
-        "F": 15,
-        "G": 15,
-        "H": 15,
+        "A": 35,
+        "B": 25,
+        "C": 18,
+        "D": 32,
+        "E": 10,
+        "F": 38,
+        "G": 18,
+        "H": 10,
+        "I": 12,
+        "J": 30,
+        "K": 15,
+        "L": 14,
+        "M": 14,
+        "N": 18,
+        "O": 25,
+        "P": 25,
     }
 
     for columna, ancho in anchos.items():
         hoja.column_dimensions[columna].width = ancho
 
-    # ------------------------------------------------------
-    # Alineación
-    # ------------------------------------------------------
+    hoja.freeze_panes = "A2"
+    hoja.auto_filter.ref = f"A1:P{max(1, fila_actual - 1)}"
 
-    for fila_excel in range(
-        fila_encabezado + 1,
-        fila_actual,
-    ):
-
-        for columna in [1, 4, 5, 6, 7, 8]:
-
-            hoja.cell(
-                row=fila_excel,
-                column=columna,
-            ).alignment = Alignment(
-                horizontal="center",
-                vertical="center",
-            )
-
-    # Congelar encabezado
-    hoja.freeze_panes = "A11"
-
-    # ------------------------------------------------------
-    # Nombre del archivo
-    # ------------------------------------------------------
-
-    nombre_carrera = carrera.nombre.replace(" ", "_").replace("/", "-")
-
-    nombre_periodo = periodo.nombre.replace(" ", "_").replace("/", "-")
-
-    nombre_archivo = (
-        f"planificacion_"
-        f"{nombre_carrera}_"
-        f"{nombre_periodo}_"
-        f"semestre_{semestre.numero}.xlsx"
-    )
-
-    # ------------------------------------------------------
-    # Descargar archivo
-    # ------------------------------------------------------
+    nombre_archivo = "programacion_horarios.xlsx"
 
     response = HttpResponse(
         content_type=(

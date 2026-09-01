@@ -3,7 +3,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("", views.inicio, name="inicio"),
+    path(
+        "",
+        views.inicio,
+        name="inicio",
+    ),
     path(
         "planificacion/",
         views.planificacion,
@@ -41,8 +45,16 @@ urlpatterns = [
         name="cargar_facultades",
     ),
     path(
+        "ajax/programas/",
+        views.cargar_programas,
+        name="cargar_programas",
+    ),
+    # Ruta temporal de compatibilidad con el JavaScript anterior.
+    # La eliminaremos cuando cambiemos Carrera por Programa Académico
+    # en los templates y en selects.js.
+    path(
         "ajax/carreras/",
-        views.cargar_carreras,
+        views.cargar_programas,
         name="cargar_carreras",
     ),
     path(
@@ -54,5 +66,10 @@ urlpatterns = [
         "ajax/semestres/",
         views.cargar_semestres,
         name="cargar_semestres",
+    ),
+    path(
+        "ajax/grupos/",
+        views.cargar_grupos,
+        name="cargar_grupos",
     ),
 ]
