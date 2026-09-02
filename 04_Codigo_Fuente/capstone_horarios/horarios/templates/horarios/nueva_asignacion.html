@@ -1,29 +1,108 @@
 {% extends "horarios/base.html" %}
 
 {% block title %}
-Nueva asignación
+Nueva asignación | Planificación Docente
 {% endblock %}
 
 
 {% block content %}
 
-<div class="row justify-content-center">
+<style>
 
-    <div class="col-lg-8">
+    .group-selector {
+        display: grid;
+        grid-template-columns: repeat(
+            auto-fit,
+            minmax(280px, 1fr)
+        );
+        gap: 10px;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 4px;
+    }
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    .group-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 58px;
+        padding: 12px 14px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        cursor: pointer;
+        transition:
+            border-color 0.15s ease,
+            background-color 0.15s ease;
+    }
 
-            <div>
+    .group-option:hover {
+        border-color: #64748b;
+        background: #f8fafc;
+    }
 
-                <h1 class="h2 fw-semibold">
-                    Nueva asignación
-                </h1>
+    .group-option-check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
 
-                <p class="text-secondary mb-0">
-                    Agregue una asignatura al horario académico.
-                </p>
+    .group-option-check input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        cursor: pointer;
+    }
 
+    .group-option-content {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .group-option-name {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .group-option:has(input:checked) {
+        border-color: #2563eb;
+        background: #eff6ff;
+    }
+
+</style>
+
+<div class="app-page">
+
+
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                PLANIFICACIÓN DOCENTE
             </div>
+
+            <h1 class="workspace-title">
+                Nueva asignación
+            </h1>
+
+            <p class="workspace-description">
+                Registre una asignatura, profesor,
+                grupos y horario dentro de la
+                planificación académica.
+            </p>
+
+        </div>
+
+
+        <div>
 
             <a
                 href="{{ volver_a }}"
@@ -34,49 +113,92 @@ Nueva asignación
 
         </div>
 
+    </div>
 
-        <div class="card shadow-sm border-0 mb-4">
 
-            <div class="card-body">
+    <!-- ==================================================
+         CONTEXTO ACADÉMICO
+         ================================================== -->
 
-                <div class="row">
+    <section class="planning-panel mb-4">
 
-                    <div class="col-md-4">
+        <div class="panel-heading-enterprise">
 
-                        <small class="text-secondary">
-                            Sede
-                        </small>
+            <div>
 
-                        <div class="fw-semibold">
-                            {{ sede.nombre }}
-                        </div>
+                <span class="panel-kicker">
+                    CONTEXTO DE PLANIFICACIÓN
+                </span>
 
+                <h2>
+                    Información académica
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="row g-4">
+
+
+                <!-- CENTRO -->
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Centro Tutorial
                     </div>
 
-
-                    <div class="col-md-4">
-
-                        <small class="text-secondary">
-                            Periodo
-                        </small>
-
-                        <div class="fw-semibold">
-                            {{ periodo.nombre }}
-                        </div>
-
+                    <div class="fw-semibold">
+                        {{ centro.nombre }}
                     </div>
 
+                </div>
 
-                    <div class="col-md-4">
 
-                        <small class="text-secondary">
-                            Semestre
-                        </small>
+                <!-- PROGRAMA -->
 
-                        <div class="fw-semibold">
-                            Semestre {{ semestre.numero }}
-                        </div>
+                <div class="col-md-3">
 
+                    <div class="text-secondary small mb-1">
+                        Programa de referencia
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ programa.nombre }}
+                    </div>
+
+                </div>
+
+
+                <!-- PERIODO -->
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Periodo Académico
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ periodo.nombre }}
+                    </div>
+
+                </div>
+
+
+                <!-- SEMESTRE -->
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Semestre
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ semestre.get_numero_display }}
                     </div>
 
                 </div>
@@ -85,45 +207,249 @@ Nueva asignación
 
         </div>
 
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4">
-
-                <form method="POST">
-
-                    {% csrf_token %}
-
-                    <input
-                        type="hidden"
-                        name="volver_a"
-                        value="{{ volver_a }}"
-                    >
+    </section>
 
 
-                    {% if form.non_field_errors %}
+    <!-- ==================================================
+         FORMULARIO
+         ================================================== -->
 
-                        <div class="alert alert-danger">
+    <section class="planning-panel">
 
-                            {{ form.non_field_errors }}
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DATOS DE LA ASIGNACIÓN
+                </span>
+
+                <h2>
+                    Programación docente
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="POST"
+            id="form-nueva-asignacion"
+            class="planning-form"
+            data-url-aulas="{% url 'cargar_aulas' %}"
+        >
+
+            {% csrf_token %}
+
+
+            <!-- ==================================================
+                 CONTEXTO OCULTO
+                 ================================================== -->
+
+            <input
+                type="hidden"
+                name="centro"
+                value="{{ centro.id }}"
+            >
+
+            <input
+                type="hidden"
+                name="programa"
+                value="{{ programa.id }}"
+            >
+
+            <input
+                type="hidden"
+                name="periodo"
+                value="{{ periodo.id }}"
+            >
+
+            <input
+                type="hidden"
+                name="semestre"
+                value="{{ semestre.id }}"
+            >
+
+            <input
+                type="hidden"
+                name="volver_a"
+                value="{{ volver_a }}"
+            >
+
+
+            <!-- ==================================================
+                 ERRORES GENERALES
+                 ================================================== -->
+
+            {% if form.non_field_errors %}
+
+                <div class="alert alert-danger">
+
+                    {% for error in form.non_field_errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- ==================================================
+                 DATOS ACADÉMICOS
+                 ================================================== -->
+
+            <div class="mb-4">
+
+                <div class="panel-kicker mb-3">
+                    ASIGNATURA Y DOCENTE
+                </div>
+
+
+                <div class="row g-4">
+
+
+                    <!-- ASIGNATURA -->
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.asignatura.id_for_label }}">
+                                Asignatura
+                            </label>
+
+                            {{ form.asignatura }}
+
+                            {% for error in form.asignatura.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
 
                         </div>
 
-                    {% endif %}
+                    </div>
 
 
-                    <div class="mb-3">
+                    <!-- PROFESOR -->
 
-                        <label class="form-label">
-                            Asignatura
-                        </label>
+                    <div class="col-lg-4">
 
-                        {{ form.asignatura }}
+                        <div class="enterprise-field">
 
-                        {% for error in form.asignatura.errors %}
+                            <label for="{{ form.profesor.id_for_label }}">
+                                Profesor
+                            </label>
 
-                            <div class="text-danger small mt-1">
-                                {{ error }}
+                            {{ form.profesor }}
+
+                            {% for error in form.profesor.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- MODALIDAD -->
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.modalidad.id_for_label }}">
+                                Modalidad
+                            </label>
+
+                            {{ form.modalidad }}
+
+                            {% for error in form.modalidad.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 GRUPOS
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-2">
+                    GRUPOS
+                </div>
+
+
+                <div class="mb-3">
+
+                    <label class="form-label fw-semibold">
+                        Seleccione uno o varios grupos
+                    </label>
+
+                    <p class="text-secondary small mb-3">
+
+                        Una asignación con un grupo corresponde
+                        a una planificación normal. Si selecciona
+                        varios grupos, se registrará como una
+                        asignación transversal.
+
+                    </p>
+
+
+                    <div class="group-selector">
+
+                        {% for checkbox in form.grupos %}
+
+                            <label
+                                class="group-option"
+                                for="{{ checkbox.id_for_label }}"
+                            >
+
+                                <div class="group-option-check">
+                                    {{ checkbox.tag }}
+                                </div>
+
+                                <div class="group-option-content">
+
+                                    <span class="group-option-name">
+                                        {{ checkbox.choice_label }}
+                                    </span>
+
+                                </div>
+
+                            </label>
+
+                        {% empty %}
+
+                            <div class="text-secondary small">
+                                No existen grupos disponibles para
+                                este periodo y semestre.
                             </div>
 
                         {% endfor %}
@@ -131,60 +457,185 @@ Nueva asignación
                     </div>
 
 
-                    <div class="mb-3">
+                    {% for error in form.grupos.errors %}
 
-                        <label class="form-label">
-                            Profesor
-                        </label>
+                        <div class="text-danger small mt-2">
+                            {{ error }}
+                        </div>
 
-                        {{ form.profesor }}
+                    {% endfor %}
 
-                        {% for error in form.profesor.errors %}
+                </div>
 
-                            <div class="text-danger small mt-1">
-                                {{ error }}
+
+                <!-- CUPOS -->
+
+                <div class="row">
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.cupos.id_for_label }}">
+                                Cupos por grupo
+                            </label>
+
+                            {{ form.cupos }}
+
+                            {% if form.cupos.help_text %}
+
+                                <div class="form-help mt-1">
+                                    {{ form.cupos.help_text }}
+                                </div>
+
+                            {% endif %}
+
+
+                            {% for error in form.cupos.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 UBICACIÓN
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    UBICACIÓN
+                </div>
+
+
+                <div class="row g-4">
+
+
+                    <!-- SEDE -->
+
+                    <div class="col-lg-6">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.sede.id_for_label }}">
+                                Sede
+                            </label>
+
+                            {{ form.sede }}
+
+                            {% for error in form.sede.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- AULA -->
+
+                    <div class="col-lg-6">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.aula.id_for_label }}">
+                                Aula
+                            </label>
+
+                            {{ form.aula }}
+
+                            <div
+                                id="ayuda-aula"
+                                class="form-help mt-1"
+                            >
+                                Seleccione una sede para consultar
+                                sus aulas disponibles.
                             </div>
 
-                        {% endfor %}
+                            {% for error in form.aula.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 HORARIO
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    HORARIO
+                </div>
+
+
+                <div class="row g-4">
+
+
+                    <!-- DÍA -->
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.dia.id_for_label }}">
+                                Día
+                            </label>
+
+                            {{ form.dia }}
+
+                            {% for error in form.dia.errors %}
+
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
 
                     </div>
 
 
-                    <div class="mb-3">
+                    <!-- HORA INICIO -->
 
-                        <label class="form-label">
-                            Aula
-                        </label>
+                    <div class="col-lg-4">
 
-                        {{ form.aula }}
+                        <div class="enterprise-field">
 
-                        {% for error in form.aula.errors %}
-
-                            <div class="text-danger small mt-1">
-                                {{ error }}
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Día
-                        </label>
-
-                        {{ form.dia }}
-
-                    </div>
-
-
-                    <div class="row">
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
+                            <label for="{{ form.hora_inicio.id_for_label }}">
                                 Hora inicio
                             </label>
 
@@ -200,10 +651,16 @@ Nueva asignación
 
                         </div>
 
+                    </div>
 
-                        <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                    <!-- HORA TÉRMINO -->
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label for="{{ form.hora_fin.id_for_label }}">
                                 Hora término
                             </label>
 
@@ -221,36 +678,316 @@ Nueva asignación
 
                     </div>
 
-
-                    <hr>
-
-
-                    <div class="d-flex justify-content-end gap-2">
-
-                        <a
-                            href="{{ volver_a }}"
-                            class="btn btn-outline-secondary"
-                        >
-                            Cancelar
-                        </a>
-
-                        <button
-                            type="submit"
-                            class="btn btn-primary"
-                        >
-                            Guardar asignación
-                        </button>
-
-                    </div>
-
-                </form>
+                </div>
 
             </div>
 
-        </div>
 
-    </div>
+            <!-- ==================================================
+                 ACCIONES
+                 ================================================== -->
+
+            <div class="planning-actions mt-4">
+
+                <div class="form-help">
+
+                    Antes de guardar, el sistema validará
+                    conflictos de profesor, aula y grupos.
+
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <a
+                        href="{{ volver_a }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Cancelar
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        Guardar asignación
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
 
 </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const form =
+            document.getElementById(
+                "form-nueva-asignacion"
+            );
+
+        const sede =
+            document.getElementById(
+                "id_sede"
+            );
+
+        const aula =
+            document.getElementById(
+                "id_aula"
+            );
+
+        const ayudaAula =
+            document.getElementById(
+                "ayuda-aula"
+            );
+
+
+        if (
+            !form
+            || !sede
+            || !aula
+        ) {
+            return;
+        }
+
+
+        const urlAulas =
+            form.dataset.urlAulas;
+
+
+        // ================================================
+        // VALOR ACTUAL
+        //
+        // Es importante cuando Django devuelve el
+        // formulario con errores.
+        // ================================================
+
+        const aulaSeleccionada =
+            aula.value;
+
+
+        // ================================================
+        // CARGAR AULAS
+        // ================================================
+
+        async function cargarAulas(
+            sedeId,
+            aulaActual = ""
+        ) {
+
+            aula.innerHTML = "";
+
+            const opcionInicial =
+                document.createElement(
+                    "option"
+                );
+
+            opcionInicial.value = "";
+
+            opcionInicial.textContent =
+                "Seleccione un aula...";
+
+            aula.appendChild(
+                opcionInicial
+            );
+
+
+            if (!sedeId) {
+
+                aula.disabled = true;
+
+                ayudaAula.textContent =
+                    (
+                        "Seleccione una sede para "
+                        + "consultar sus aulas disponibles."
+                    );
+
+                return;
+            }
+
+
+            aula.disabled = true;
+
+            ayudaAula.textContent =
+                "Cargando aulas...";
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${urlAulas}?sede=${sedeId}`
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "No fue posible cargar las aulas."
+                    );
+                }
+
+
+                const datos =
+                    await response.json();
+
+
+                if (!datos.length) {
+
+                    opcionInicial.textContent =
+                        (
+                            "No hay aulas disponibles "
+                            + "en esta sede"
+                        );
+
+                    ayudaAula.textContent =
+                        (
+                            "La sede seleccionada no "
+                            + "tiene aulas activas."
+                        );
+
+                    return;
+                }
+
+
+                datos.forEach(
+                    function (registro) {
+
+                        const option =
+                            document.createElement(
+                                "option"
+                            );
+
+                        option.value =
+                            registro.id;
+
+
+                        let detalle =
+                            registro.nombre;
+
+
+                        if (
+                            registro.tipo
+                            === "FISICA"
+                        ) {
+
+                            detalle +=
+                                (
+                                    ` — Capacidad: `
+                                    + `${registro.capacidad}`
+                                );
+                        }
+
+                        else if (
+                            registro.tipo
+                            === "VIRTUAL"
+                        ) {
+
+                            detalle +=
+                                " — Virtual";
+                        }
+
+
+                        option.textContent =
+                            detalle;
+
+
+                        aula.appendChild(
+                            option
+                        );
+                    }
+                );
+
+
+                aula.disabled = false;
+
+
+                if (aulaActual) {
+
+                    aula.value =
+                        String(
+                            aulaActual
+                        );
+                }
+
+
+                ayudaAula.textContent =
+                    (
+                        `${datos.length} aula(s) `
+                        + "disponible(s)."
+                    );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    error
+                );
+
+                aula.disabled = true;
+
+                opcionInicial.textContent =
+                    "Error al cargar aulas";
+
+                ayudaAula.textContent =
+                    (
+                        "No fue posible obtener "
+                        + "las aulas de la sede."
+                    );
+            }
+        }
+
+
+        // ================================================
+        // CAMBIO DE SEDE
+        // ================================================
+
+        sede.addEventListener(
+            "change",
+            function () {
+
+                cargarAulas(
+                    sede.value
+                );
+            }
+        );
+
+
+        // ================================================
+        // CARGA INICIAL
+        // ================================================
+
+        if (sede.value) {
+
+            cargarAulas(
+                sede.value,
+                aulaSeleccionada
+            );
+        }
+
+        else {
+
+            aula.disabled = true;
+        }
+
+    }
+);
+
+</script>
 
 {% endblock %}

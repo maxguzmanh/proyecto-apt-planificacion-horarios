@@ -424,27 +424,12 @@ Planificación de Horarios
 
                         {% if perms.horarios.add_horario %}
 
-                            {% if sede %}
-
-                                <a
-                                    href="{% url 'nueva_asignacion' %}?{{ request.GET.urlencode }}&volver_a={{ request.get_full_path|urlencode }}"
-                                    class="btn btn-primary"
-                                >
-                                    + Nueva asignación
-                                </a>
-
-                            {% else %}
-
-                                <button
-                                    type="button"
-                                    class="btn btn-primary"
-                                    disabled
-                                    title="Seleccione una sede para crear una asignación."
-                                >
-                                    + Nueva asignación
-                                </button>
-
-                            {% endif %}
+                            <a
+                                href="{% url 'nueva_asignacion' %}?{{ request.GET.urlencode }}&volver_a={{ request.get_full_path|urlencode }}"
+                                class="btn btn-primary"
+                            >
+                                + Nueva asignación
+                            </a>
 
                         {% endif %}
 

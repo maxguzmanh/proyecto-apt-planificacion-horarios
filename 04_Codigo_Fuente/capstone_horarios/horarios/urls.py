@@ -40,6 +40,11 @@ urlpatterns = [
         name="cargar_sedes",
     ),
     path(
+        "ajax/aulas/",
+        views.cargar_aulas,
+        name="cargar_aulas",
+    ),
+    path(
         "ajax/facultades/",
         views.cargar_facultades,
         name="cargar_facultades",

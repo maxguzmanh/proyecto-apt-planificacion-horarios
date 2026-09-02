@@ -1,29 +1,109 @@
 {% extends "horarios/base.html" %}
 
 {% block title %}
-Editar asignación
+Editar asignación | Planificación Docente
 {% endblock %}
 
 
 {% block content %}
 
-<div class="row justify-content-center">
+<style>
 
-    <div class="col-lg-8">
+    .group-selector {
+        display: grid;
+        grid-template-columns: repeat(
+            auto-fit,
+            minmax(280px, 1fr)
+        );
+        gap: 10px;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 4px;
+    }
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    .group-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 58px;
+        padding: 12px 14px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        cursor: pointer;
+        transition:
+            border-color 0.15s ease,
+            background-color 0.15s ease;
+    }
 
-            <div>
+    .group-option:hover {
+        border-color: #64748b;
+        background: #f8fafc;
+    }
 
-                <h1 class="h2 fw-semibold">
-                    Editar asignación
-                </h1>
+    .group-option-check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
 
-                <p class="text-secondary mb-0">
-                    Modifique los datos del horario seleccionado.
-                </p>
+    .group-option-check input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        cursor: pointer;
+    }
 
+    .group-option-content {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .group-option-name {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .group-option:has(input:checked) {
+        border-color: #2563eb;
+        background: #eff6ff;
+    }
+
+</style>
+
+
+<div class="app-page">
+
+
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                PLANIFICACIÓN DOCENTE
             </div>
+
+            <h1 class="workspace-title">
+                Editar asignación
+            </h1>
+
+            <p class="workspace-description">
+                Modifique la información académica,
+                grupos, ubicación o horario de la
+                asignación seleccionada.
+            </p>
+
+        </div>
+
+
+        <div>
 
             <a
                 href="{{ volver_a }}"
@@ -34,51 +114,83 @@ Editar asignación
 
         </div>
 
+    </div>
 
-        <!-- Información académica -->
 
-        <div class="card shadow-sm border-0 mb-4">
+    <!-- ==================================================
+         CONTEXTO ACADÉMICO
+         ================================================== -->
 
-            <div class="card-body">
+    <section class="planning-panel mb-4">
 
-                <div class="row">
+        <div class="panel-heading-enterprise">
 
-                    <div class="col-md-4">
+            <div>
 
-                        <small class="text-secondary">
-                            Sede
-                        </small>
+                <span class="panel-kicker">
+                    CONTEXTO DE PLANIFICACIÓN
+                </span>
 
-                        <div class="fw-semibold">
-                            {{ sede.nombre }}
-                        </div>
+                <h2>
+                    Información académica
+                </h2>
 
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="row g-4">
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Centro Tutorial
                     </div>
 
-
-                    <div class="col-md-4">
-
-                        <small class="text-secondary">
-                            Periodo
-                        </small>
-
-                        <div class="fw-semibold">
-                            {{ periodo.nombre }}
-                        </div>
-
+                    <div class="fw-semibold">
+                        {{ centro.nombre }}
                     </div>
 
+                </div>
 
-                    <div class="col-md-4">
 
-                        <small class="text-secondary">
-                            Semestre
-                        </small>
+                <div class="col-md-3">
 
-                        <div class="fw-semibold">
-                            Semestre {{ semestre.numero }}
-                        </div>
+                    <div class="text-secondary small mb-1">
+                        Programa de referencia
+                    </div>
 
+                    <div class="fw-semibold">
+                        {{ programa.nombre }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Periodo Académico
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ periodo.nombre }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Semestre
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ semestre.get_numero_display }}
                     </div>
 
                 </div>
@@ -87,204 +199,629 @@ Editar asignación
 
         </div>
 
-
-        <!-- Formulario -->
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-4">
-
-                <form method="POST">
-
-                    {% csrf_token %}
-
-                    <input
-                        type="hidden"
-                        name="volver_a"
-                        value="{{ volver_a }}"
-                    >
+    </section>
 
 
-                    {% if form.non_field_errors %}
+    <!-- ==================================================
+         FORMULARIO
+         ================================================== -->
 
-                        <div class="alert alert-danger">
+    <section class="planning-panel">
 
-                            {{ form.non_field_errors }}
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DATOS DE LA ASIGNACIÓN
+                </span>
+
+                <h2>
+                    Programación docente
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="POST"
+            id="form-editar-asignacion"
+            class="planning-form"
+            data-url-aulas="{% url 'cargar_aulas' %}"
+        >
+
+            {% csrf_token %}
+
+
+            <input
+                type="hidden"
+                name="volver_a"
+                value="{{ volver_a }}"
+            >
+
+
+            <!-- ERRORES GENERALES -->
+
+            {% if form.non_field_errors %}
+
+                <div class="alert alert-danger">
+
+                    {% for error in form.non_field_errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- ==================================================
+                 ASIGNATURA / PROFESOR
+                 ================================================== -->
+
+            <div class="mb-4">
+
+                <div class="panel-kicker mb-3">
+                    ASIGNATURA Y DOCENTE
+                </div>
+
+                <div class="row g-4">
+
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label>
+                                Asignatura
+                            </label>
+
+                            {{ form.asignatura }}
+
+                            {% for error in form.asignatura.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
 
                         </div>
 
-                    {% endif %}
+                    </div>
 
 
-                    <!-- Asignatura -->
+                    <div class="col-lg-4">
 
-                    <div class="mb-3">
+                        <div class="enterprise-field">
 
-                        <label class="form-label">
-                            Asignatura
-                        </label>
+                            <label>
+                                Profesor
+                            </label>
 
-                        {{ form.asignatura }}
+                            {{ form.profesor }}
 
-                        {% for error in form.asignatura.errors %}
+                            {% for error in form.profesor.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
 
-                            <div class="text-danger small mt-1">
-                                {{ error }}
-                            </div>
-
-                        {% endfor %}
+                        </div>
 
                     </div>
 
 
-                    <!-- Profesor -->
+                    <div class="col-lg-4">
 
-                    <div class="mb-3">
+                        <div class="enterprise-field">
 
-                        <label class="form-label">
-                            Profesor
-                        </label>
+                            <label>
+                                Modalidad
+                            </label>
 
-                        {{ form.profesor }}
+                            {{ form.modalidad }}
 
-                        {% for error in form.profesor.errors %}
+                            {% for error in form.modalidad.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
 
-                            <div class="text-danger small mt-1">
-                                {{ error }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 GRUPOS
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-2">
+                    GRUPOS
+                </div>
+
+                <p class="text-secondary small mb-3">
+
+                    Puede agregar o quitar grupos.
+                    Si quedan varios seleccionados,
+                    la asignación se considerará transversal.
+
+                </p>
+
+
+                <div class="group-selector">
+
+                    {% for checkbox in form.grupos %}
+
+                        <label
+                            class="group-option"
+                            for="{{ checkbox.id_for_label }}"
+                        >
+
+                            <div class="group-option-check">
+                                {{ checkbox.tag }}
                             </div>
 
-                        {% endfor %}
+                            <div class="group-option-content">
+
+                                <span class="group-option-name">
+                                    {{ checkbox.choice_label }}
+                                </span>
+
+                            </div>
+
+                        </label>
+
+                    {% endfor %}
+
+                </div>
+
+
+                {% for error in form.grupos.errors %}
+
+                    <div class="text-danger small mt-2">
+                        {{ error }}
+                    </div>
+
+                {% endfor %}
+
+
+                <div class="row mt-4">
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label>
+                                Cupos por grupo
+                            </label>
+
+                            {{ form.cupos }}
+
+                            {% for error in form.cupos.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 UBICACIÓN
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    UBICACIÓN
+                </div>
+
+                <div class="row g-4">
+
+
+                    <div class="col-lg-6">
+
+                        <div class="enterprise-field">
+
+                            <label>
+                                Sede
+                            </label>
+
+                            {{ form.sede }}
+
+                            {% for error in form.sede.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
 
                     </div>
 
 
-                    <!-- Aula -->
+                    <div class="col-lg-6">
 
-                    <div class="mb-3">
+                        <div class="enterprise-field">
 
-                        <label class="form-label">
-                            Aula
-                        </label>
+                            <label>
+                                Aula
+                            </label>
 
-                        {{ form.aula }}
+                            {{ form.aula }}
 
-                        {% for error in form.aula.errors %}
+                            <div
+                                id="ayuda-aula"
+                                class="form-help mt-1"
+                            ></div>
 
-                            <div class="text-danger small mt-1">
-                                {{ error }}
-                            </div>
+                            {% for error in form.aula.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
 
-                        {% endfor %}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- ==================================================
+                 HORARIO
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    HORARIO
+                </div>
+
+                <div class="row g-4">
+
+
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label>
+                                Día
+                            </label>
+
+                            {{ form.dia }}
+
+                            {% for error in form.dia.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
 
                     </div>
 
 
-                    <!-- Día -->
+                    <div class="col-lg-4">
 
-                    <div class="mb-3">
+                        <div class="enterprise-field">
 
-                        <label class="form-label">
-                            Día
-                        </label>
-
-                        {{ form.dia }}
-
-                        {% for error in form.dia.errors %}
-
-                            <div class="text-danger small mt-1">
-                                {{ error }}
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
-
-                    <!-- Horas -->
-
-                    <div class="row">
-
-                        <div class="col-md-6 mb-3">
-
-                            <label class="form-label">
+                            <label>
                                 Hora inicio
                             </label>
 
                             {{ form.hora_inicio }}
 
                             {% for error in form.hora_inicio.errors %}
-
                                 <div class="text-danger small mt-1">
                                     {{ error }}
                                 </div>
-
                             {% endfor %}
 
                         </div>
 
+                    </div>
 
-                        <div class="col-md-6 mb-3">
 
-                            <label class="form-label">
+                    <div class="col-lg-4">
+
+                        <div class="enterprise-field">
+
+                            <label>
                                 Hora término
                             </label>
 
                             {{ form.hora_fin }}
 
                             {% for error in form.hora_fin.errors %}
-
                                 <div class="text-danger small mt-1">
                                     {{ error }}
                                 </div>
-
                             {% endfor %}
 
                         </div>
 
                     </div>
 
+                </div>
 
-                    <hr>
+            </div>
 
 
-                    <div class="d-flex justify-content-between">
+            <!-- ==================================================
+                 ACCIONES
+                 ================================================== -->
+
+            <div class="planning-actions mt-4">
+
+                <div>
+
+                    {% if perms.horarios.delete_horario %}
 
                         <a
                             href="{% url 'eliminar_asignacion' horario.id %}?volver_a={{ volver_a|urlencode }}"
                             class="btn btn-outline-danger"
                         >
-                            Eliminar
+                            Eliminar asignación
                         </a>
 
+                    {% endif %}
 
-                        <div class="d-flex gap-2">
+                </div>
 
-                            <a
-                                href="{{ volver_a }}"
-                                class="btn btn-outline-secondary"
-                            >
-                                Cancelar
-                            </a>
 
-                            <button
-                                type="submit"
-                                class="btn btn-primary"
-                            >
-                                Guardar cambios
-                            </button>
+                <div class="d-flex gap-2">
 
-                        </div>
+                    <a
+                        href="{{ volver_a }}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Cancelar
+                    </a>
 
-                    </div>
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        Guardar cambios
+                    </button>
 
-                </form>
+                </div>
 
             </div>
 
-        </div>
+        </form>
 
-    </div>
+    </section>
 
 </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const form =
+            document.getElementById(
+                "form-editar-asignacion"
+            );
+
+        const sede =
+            document.getElementById(
+                "id_sede"
+            );
+
+        const aula =
+            document.getElementById(
+                "id_aula"
+            );
+
+        const ayudaAula =
+            document.getElementById(
+                "ayuda-aula"
+            );
+
+
+        if (!form || !sede || !aula) {
+            return;
+        }
+
+
+        const urlAulas =
+            form.dataset.urlAulas;
+
+        const aulaSeleccionada =
+            aula.value;
+
+
+        async function cargarAulas(
+            sedeId,
+            aulaActual = ""
+        ) {
+
+            aula.innerHTML = "";
+
+            const opcionInicial =
+                document.createElement(
+                    "option"
+                );
+
+            opcionInicial.value = "";
+            opcionInicial.textContent =
+                "Seleccione un aula...";
+
+            aula.appendChild(
+                opcionInicial
+            );
+
+
+            if (!sedeId) {
+
+                aula.disabled = true;
+
+                ayudaAula.textContent =
+                    "Seleccione una sede.";
+
+                return;
+            }
+
+
+            aula.disabled = true;
+
+            ayudaAula.textContent =
+                "Cargando aulas...";
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${urlAulas}?sede=${sedeId}`
+                    );
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "No fue posible cargar las aulas."
+                    );
+                }
+
+
+                const datos =
+                    await response.json();
+
+
+                datos.forEach(
+                    function (registro) {
+
+                        const option =
+                            document.createElement(
+                                "option"
+                            );
+
+                        option.value =
+                            registro.id;
+
+                        let texto =
+                            registro.nombre;
+
+
+                        if (
+                            registro.tipo
+                            === "FISICA"
+                        ) {
+
+                            texto +=
+                                ` — Capacidad: ${registro.capacidad}`;
+                        }
+
+                        else if (
+                            registro.tipo
+                            === "VIRTUAL"
+                        ) {
+
+                            texto +=
+                                " — Virtual";
+                        }
+
+
+                        option.textContent =
+                            texto;
+
+                        aula.appendChild(
+                            option
+                        );
+                    }
+                );
+
+
+                aula.disabled =
+                    datos.length === 0;
+
+
+                if (aulaActual) {
+
+                    aula.value =
+                        String(
+                            aulaActual
+                        );
+                }
+
+
+                ayudaAula.textContent =
+                    `${datos.length} aula(s) disponible(s).`;
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                aula.disabled = true;
+
+                ayudaAula.textContent =
+                    "Error al cargar las aulas.";
+            }
+        }
+
+
+        sede.addEventListener(
+            "change",
+            function () {
+
+                cargarAulas(
+                    sede.value
+                );
+            }
+        );
+
+
+        if (sede.value) {
+
+            cargarAulas(
+                sede.value,
+                aulaSeleccionada
+            );
+        }
+
+    }
+);
+
+</script>
 
 {% endblock %}

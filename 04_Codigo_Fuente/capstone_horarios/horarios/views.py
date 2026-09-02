@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,8 +24,13 @@ from academico.models import (
     Semestre,
 )
 
-from .forms import HorarioForm
-from .models import Grupo, Horario, OfertaGrupo
+from .forms import HorarioForm, NuevaAsignacionForm
+from .models import (
+    Grupo,
+    Horario,
+    OfertaAcademica,
+    OfertaGrupo,
+)
 
 # ==========================================================
 # CONFIGURACIÓN DEL CALENDARIO
@@ -41,14 +47,40 @@ PIXELES_POR_MINUTO = 0.75
 
 
 def agregar_errores_formulario(form, error):
+    """
+    Agrega los errores de validación del modelo como
+    errores generales del formulario.
+
+    De esta forma los conflictos de profesor, aula,
+    grupo, etc. se muestran con el mismo estilo visual
+    en la parte superior del formulario.
+    """
+
     if hasattr(error, "message_dict"):
-        for campo, errores in error.message_dict.items():
-            campo_formulario = campo if campo in form.fields else None
+
+        for errores in error.message_dict.values():
 
             for mensaje in errores:
-                form.add_error(campo_formulario, mensaje)
+
+                form.add_error(
+                    None,
+                    mensaje,
+                )
+
     else:
-        form.add_error(None, error)
+
+        mensajes = getattr(
+            error,
+            "messages",
+            [str(error)],
+        )
+
+        for mensaje in mensajes:
+
+            form.add_error(
+                None,
+                mensaje,
+            )
 
 
 # ==========================================================
@@ -456,6 +488,40 @@ def cargar_sedes(request):
 
 
 @login_required
+def cargar_aulas(request):
+
+    sede_id = request.GET.get("sede")
+
+    if not sede_id:
+
+        return JsonResponse(
+            [],
+            safe=False,
+        )
+
+    aulas = (
+        Aula.objects.filter(
+            sede_id=sede_id,
+            activo=True,
+        )
+        .order_by(
+            "nombre",
+        )
+        .values(
+            "id",
+            "nombre",
+            "capacidad",
+            "tipo",
+        )
+    )
+
+    return JsonResponse(
+        list(aulas),
+        safe=False,
+    )
+
+
+@login_required
 def cargar_facultades(request):
     centro_id = request.GET.get("centro")
     sede_id = request.GET.get("sede")
@@ -643,43 +709,51 @@ def cargar_grupos(request):
     raise_exception=True,
 )
 def nueva_asignacion(request):
+
+    # ======================================================
+    # CONTEXTO ACADÉMICO
+    # ======================================================
+
+    centro_id = request.GET.get("centro") or request.POST.get("centro")
+
     periodo_id = request.GET.get("periodo") or request.POST.get("periodo")
+
     semestre_id = request.GET.get("semestre") or request.POST.get("semestre")
+
+    programa_id = request.GET.get("programa") or request.POST.get("programa")
+
     sede_id = request.GET.get("sede") or request.POST.get("sede")
-    programa_id = (
-        request.GET.get("programa")
-        or request.GET.get("carrera")
-        or request.POST.get("programa")
-        or request.POST.get("carrera")
-    )
+
+    # ------------------------------------------------------
+    # Centro, Programa, Periodo y Semestre son necesarios.
+    #
+    # Sede es opcional porque ahora puede seleccionarse
+    # directamente dentro del formulario.
+    # ------------------------------------------------------
 
     if not all(
         [
+            centro_id,
+            programa_id,
             periodo_id,
             semestre_id,
-            sede_id,
-            programa_id,
         ]
     ):
+
         messages.error(
             request,
-            "Falta información académica para crear la asignación.",
+            ("Falta información académica para " "crear la asignación."),
         )
-        return redirect("inicio")
 
-    periodo = get_object_or_404(
-        PeriodoAcademico,
-        pk=periodo_id,
-    )
+        return redirect("planificacion")
 
-    semestre = get_object_or_404(
-        Semestre,
-        pk=semestre_id,
-    )
+    # ======================================================
+    # OBTENER CONTEXTO
+    # ======================================================
 
-    sede = get_object_or_404(
-        Sede,
-        pk=sede_id,
+    centro = get_object_or_404(
+        CentroTutorial,
+        pk=centro_id,
         activo=True,
     )
 
@@ -689,7 +763,21 @@ def nueva_asignacion(request):
         activo=True,
     )
 
-    centro = sede.centro_tutorial
+    periodo = get_object_or_404(
+        PeriodoAcademico,
+        pk=periodo_id,
+        activo=True,
+    )
+
+    semestre = get_object_or_404(
+        Semestre,
+        pk=semestre_id,
+    )
+
+    # ------------------------------------------------------
+    # Verificar que el programa esté disponible
+    # en el Centro Tutorial.
+    # ------------------------------------------------------
 
     get_object_or_404(
         ProgramaCentroTutorial,
@@ -698,6 +786,25 @@ def nueva_asignacion(request):
         activo=True,
     )
 
+    # ======================================================
+    # SEDE INICIAL OPCIONAL
+    # ======================================================
+
+    sede_inicial = None
+
+    if sede_id:
+
+        sede_inicial = get_object_or_404(
+            Sede,
+            pk=sede_id,
+            centro_tutorial=centro,
+            activo=True,
+        )
+
+    # ======================================================
+    # URL DE RETORNO
+    # ======================================================
+
     volver_a = (
         request.POST.get("volver_a")
         or request.GET.get("volver_a")
@@ -705,49 +812,159 @@ def nueva_asignacion(request):
         or "/"
     )
 
+    # ======================================================
+    # POST
+    # ======================================================
+
     if request.method == "POST":
-        form = HorarioForm(
+
+        form = NuevaAsignacionForm(
             request.POST,
             programa=programa,
             semestre=semestre,
             centro_tutorial=centro,
-            sede=sede,
             periodo=periodo,
+            sede_inicial=sede_inicial,
         )
 
         if form.is_valid():
-            horario = form.save(commit=False)
+
+            asignatura = form.cleaned_data["asignatura"]
+
+            profesor = form.cleaned_data["profesor"]
+
+            modalidad = form.cleaned_data["modalidad"]
+
+            grupos = form.cleaned_data["grupos"]
+
+            cupos = form.cleaned_data["cupos"]
+
+            aula = form.cleaned_data["aula"]
+
+            dia = form.cleaned_data["dia"]
+
+            hora_inicio = form.cleaned_data["hora_inicio"]
+
+            hora_fin = form.cleaned_data["hora_fin"]
 
             try:
-                horario.full_clean()
+
+                # ==========================================
+                # TRANSACCIÓN
+                #
+                # Si falla cualquier validación,
+                # no queda información parcial guardada.
+                # ==========================================
+
+                with transaction.atomic():
+
+                    # ======================================
+                    # 1. CREAR OFERTA ACADÉMICA
+                    # ======================================
+
+                    oferta = OfertaAcademica(
+                        asignatura=asignatura,
+                        profesor=profesor,
+                        periodo=periodo,
+                        modalidad=modalidad,
+                        activo=True,
+                    )
+
+                    oferta.full_clean()
+                    oferta.save()
+
+                    # ======================================
+                    # 2. ASOCIAR GRUPOS
+                    # ======================================
+
+                    for grupo in grupos:
+
+                        oferta_grupo = OfertaGrupo(
+                            oferta=oferta,
+                            grupo=grupo,
+                            cupos=cupos,
+                        )
+
+                        oferta_grupo.full_clean()
+                        oferta_grupo.save()
+
+                    # ======================================
+                    # 3. CREAR HORARIO
+                    # ======================================
+
+                    horario = Horario(
+                        oferta=oferta,
+                        aula=aula,
+                        dia=dia,
+                        hora_inicio=hora_inicio,
+                        hora_fin=hora_fin,
+                        activo=True,
+                    )
+
+                    # --------------------------------------
+                    # Aquí se ejecutan las validaciones de:
+                    #
+                    # - profesor
+                    # - aula
+                    # - grupos
+                    # - superposición horaria
+                    # --------------------------------------
+
+                    horario.full_clean()
+
+                    horario.save()
+
             except ValidationError as error:
-                agregar_errores_formulario(form, error)
+
+                agregar_errores_formulario(
+                    form,
+                    error,
+                )
+
             else:
-                horario.save()
+
+                cantidad_grupos = grupos.count()
+
+                if cantidad_grupos > 1:
+
+                    mensaje = "Asignación transversal creada " "correctamente."
+
+                else:
+
+                    mensaje = "Asignación creada " "correctamente."
 
                 messages.success(
                     request,
-                    "Horario creado correctamente.",
+                    mensaje,
                 )
 
                 return redirect(volver_a)
+
+    # ======================================================
+    # GET
+    # ======================================================
+
     else:
-        form = HorarioForm(
+
+        form = NuevaAsignacionForm(
             programa=programa,
             semestre=semestre,
             centro_tutorial=centro,
-            sede=sede,
             periodo=periodo,
+            sede_inicial=sede_inicial,
         )
+
+    # ======================================================
+    # CONTEXTO
+    # ======================================================
 
     context = {
         "form": form,
+        "centro": centro,
+        "programa": programa,
         "periodo": periodo,
         "semestre": semestre,
-        "sede": sede,
-        "programa": programa,
-        "carrera": programa,
-        "centro": centro,
+        "sede": sede_inicial,
         "volver_a": volver_a,
     }
 
@@ -768,81 +985,273 @@ def nueva_asignacion(request):
     "horarios.change_horario",
     raise_exception=True,
 )
-def editar_asignacion(request, horario_id):
+def editar_asignacion(
+    request,
+    horario_id,
+):
+
+    # ======================================================
+    # HORARIO ACTUAL
+    # ======================================================
+
     horario = get_object_or_404(
         Horario.objects.select_related(
             "oferta",
+            "oferta__asignatura",
+            "oferta__profesor",
             "oferta__periodo",
+            "oferta__modalidad",
             "aula",
             "aula__sede",
             "aula__sede__centro_tutorial",
-        ).prefetch_related("oferta__grupos"),
+        ).prefetch_related(
+            "oferta__grupos",
+        ),
         pk=horario_id,
     )
 
-    grupo_referencia = horario.oferta.grupos.first()
+    oferta = horario.oferta
 
-    if not grupo_referencia:
+    # ======================================================
+    # GRUPOS ACTUALES
+    # ======================================================
+
+    grupos_actuales = list(
+        oferta.grupos.select_related(
+            "programa",
+            "centro_tutorial",
+            "periodo",
+            "semestre",
+        ).all()
+    )
+
+    if not grupos_actuales:
+
         messages.error(
             request,
-            "La oferta académica no tiene grupos asociados.",
+            ("La oferta académica no tiene " "grupos asociados."),
         )
-        return redirect("inicio")
 
-    periodo = horario.oferta.periodo
-    semestre = grupo_referencia.semestre
-    programa = grupo_referencia.programa
+        return redirect("planificacion")
+
+    # ------------------------------------------------------
+    # Utilizamos el primer grupo como contexto de referencia.
+    #
+    # En una asignación transversal pueden existir varios
+    # programas, pero todos pertenecen al mismo periodo,
+    # centro y semestre.
+    # ------------------------------------------------------
+
+    grupo_referencia = grupos_actuales[0]
+
     centro = grupo_referencia.centro_tutorial
-    sede = horario.aula.sede
 
-    volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
+    programa = grupo_referencia.programa
+
+    periodo = oferta.periodo
+
+    semestre = grupo_referencia.semestre
+
+    sede_actual = horario.aula.sede
+
+    # ======================================================
+    # URL DE RETORNO
+    # ======================================================
+
+    volver_a = (
+        request.POST.get("volver_a")
+        or request.GET.get("volver_a")
+        or request.META.get("HTTP_REFERER")
+        or "/"
+    )
+
+    # ======================================================
+    # CUPOS ACTUALES
+    # ======================================================
+
+    oferta_grupos_actuales = list(
+        OfertaGrupo.objects.filter(
+            oferta=oferta,
+        ).select_related(
+            "grupo",
+            "grupo__programa",
+        )
+    )
+
+    if oferta_grupos_actuales:
+
+        cupos_actuales = oferta_grupos_actuales[0].cupos
+
+    else:
+
+        cupos_actuales = 30
+
+    # ======================================================
+    # POST
+    # ======================================================
 
     if request.method == "POST":
-        form = HorarioForm(
+
+        form = NuevaAsignacionForm(
             request.POST,
-            instance=horario,
             programa=programa,
             semestre=semestre,
             centro_tutorial=centro,
-            sede=sede,
             periodo=periodo,
+            sede_inicial=sede_actual,
         )
 
         if form.is_valid():
-            horario_editado = form.save(commit=False)
+
+            asignatura = form.cleaned_data["asignatura"]
+
+            profesor = form.cleaned_data["profesor"]
+
+            modalidad = form.cleaned_data["modalidad"]
+
+            grupos = form.cleaned_data["grupos"]
+
+            cupos = form.cleaned_data["cupos"]
+
+            aula = form.cleaned_data["aula"]
+
+            dia = form.cleaned_data["dia"]
+
+            hora_inicio = form.cleaned_data["hora_inicio"]
+
+            hora_fin = form.cleaned_data["hora_fin"]
 
             try:
-                horario_editado.full_clean()
+
+                # ==========================================
+                # TRANSACCIÓN
+                #
+                # Si una validación falla, toda la edición
+                # vuelve automáticamente a su estado previo.
+                # ==========================================
+
+                with transaction.atomic():
+
+                    # ======================================
+                    # 1. ACTUALIZAR OFERTA
+                    # ======================================
+
+                    oferta.asignatura = asignatura
+                    oferta.profesor = profesor
+                    oferta.modalidad = modalidad
+                    oferta.periodo = periodo
+                    oferta.activo = True
+
+                    oferta.full_clean()
+
+                    oferta.save()
+
+                    # ======================================
+                    # 2. ACTUALIZAR GRUPOS
+                    #
+                    # Eliminamos las asociaciones anteriores
+                    # y reconstruimos las seleccionadas.
+                    # ======================================
+
+                    OfertaGrupo.objects.filter(
+                        oferta=oferta,
+                    ).delete()
+
+                    for grupo in grupos:
+
+                        oferta_grupo = OfertaGrupo(
+                            oferta=oferta,
+                            grupo=grupo,
+                            cupos=cupos,
+                        )
+
+                        oferta_grupo.full_clean()
+
+                        oferta_grupo.save()
+
+                    # ======================================
+                    # 3. ACTUALIZAR HORARIO
+                    # ======================================
+
+                    horario.aula = aula
+                    horario.dia = dia
+                    horario.hora_inicio = hora_inicio
+                    horario.hora_fin = hora_fin
+                    horario.activo = True
+
+                    # --------------------------------------
+                    # Horario.clean() excluye su propio PK,
+                    # por lo que no se detectará a sí mismo
+                    # como conflicto.
+                    # --------------------------------------
+
+                    horario.full_clean()
+
+                    horario.save()
+
             except ValidationError as error:
-                agregar_errores_formulario(form, error)
+
+                agregar_errores_formulario(
+                    form,
+                    error,
+                )
+
             else:
-                horario_editado.save()
+
+                if grupos.count() > 1:
+
+                    mensaje = "Asignación transversal " "actualizada correctamente."
+
+                else:
+
+                    mensaje = "Asignación actualizada " "correctamente."
 
                 messages.success(
                     request,
-                    "Horario actualizado correctamente.",
+                    mensaje,
                 )
 
                 return redirect(volver_a)
+
+    # ======================================================
+    # GET
+    # ======================================================
+
     else:
-        form = HorarioForm(
-            instance=horario,
+
+        form = NuevaAsignacionForm(
             programa=programa,
             semestre=semestre,
             centro_tutorial=centro,
-            sede=sede,
             periodo=periodo,
+            sede_inicial=sede_actual,
+            initial={
+                "asignatura": (oferta.asignatura_id),
+                "profesor": (oferta.profesor_id),
+                "modalidad": (oferta.modalidad_id),
+                "grupos": [grupo.id for grupo in grupos_actuales],
+                "cupos": (cupos_actuales),
+                "sede": (sede_actual.id),
+                "aula": (horario.aula_id),
+                "dia": (horario.dia),
+                "hora_inicio": (horario.hora_inicio),
+                "hora_fin": (horario.hora_fin),
+            },
         )
+
+    # ======================================================
+    # CONTEXTO
+    # ======================================================
 
     context = {
         "form": form,
         "horario": horario,
+        "oferta": oferta,
+        "centro": centro,
+        "programa": programa,
         "periodo": periodo,
         "semestre": semestre,
-        "sede": sede,
-        "programa": programa,
-        "carrera": programa,
-        "centro": centro,
+        "sede": sede_actual,
         "volver_a": volver_a,
     }
 
@@ -863,26 +1272,102 @@ def editar_asignacion(request, horario_id):
     "horarios.delete_horario",
     raise_exception=True,
 )
-def eliminar_asignacion(request, horario_id):
+def eliminar_asignacion(
+    request,
+    horario_id,
+):
+
     horario = get_object_or_404(
-        Horario,
+        Horario.objects.select_related(
+            "oferta",
+            "oferta__asignatura",
+            "oferta__profesor",
+            "aula",
+        ),
         pk=horario_id,
     )
 
+    oferta = horario.oferta
+
     volver_a = request.POST.get("volver_a") or request.GET.get("volver_a") or "/"
 
-    if request.method == "POST":
-        horario.delete()
+    # ======================================================
+    # INFORMACIÓN PARA LA CONFIRMACIÓN
+    # ======================================================
 
-        messages.success(
-            request,
-            "Horario eliminado correctamente.",
-        )
+    grupos = list(
+        oferta.grupos.select_related(
+            "programa",
+        ).all()
+    )
+
+    # ======================================================
+    # ELIMINAR
+    # ======================================================
+
+    if request.method == "POST":
+
+        try:
+
+            with transaction.atomic():
+
+                # Guardamos información antes de eliminar.
+
+                nombre_asignatura = oferta.asignatura.nombre
+
+                # ------------------------------------------
+                # Eliminamos el horario seleccionado.
+                # ------------------------------------------
+
+                horario.delete()
+
+                # ------------------------------------------
+                # ¿La oferta todavía tiene otros horarios?
+                # ------------------------------------------
+
+                tiene_otros_horarios = Horario.objects.filter(
+                    oferta=oferta,
+                ).exists()
+
+                # ------------------------------------------
+                # Si no quedan horarios, la Oferta Académica
+                # ya no tiene razón de existir.
+                #
+                # Al eliminar OfertaAcademica se eliminarán
+                # también sus OfertaGrupo mediante CASCADE.
+                # ------------------------------------------
+
+                if not tiene_otros_horarios:
+
+                    oferta.delete()
+
+        except Exception:
+
+            messages.error(
+                request,
+                ("No fue posible eliminar la " "asignación."),
+            )
+
+        else:
+
+            messages.success(
+                request,
+                (
+                    f'La asignación "{nombre_asignatura}" '
+                    "fue eliminada correctamente."
+                ),
+            )
 
         return redirect(volver_a)
 
+    # ======================================================
+    # CONFIRMACIÓN
+    # ======================================================
+
     context = {
         "horario": horario,
+        "oferta": oferta,
+        "grupos": grupos,
         "volver_a": volver_a,
     }
 

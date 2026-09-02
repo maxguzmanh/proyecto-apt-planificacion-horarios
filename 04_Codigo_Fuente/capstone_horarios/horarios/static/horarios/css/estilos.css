@@ -1299,8 +1299,13 @@ a:hover {
     padding:
         7px 9px;
 
-    overflow:
-        hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.55) transparent;
+
+    overscroll-behavior: contain;
 
     border:
         1px solid rgba(29, 78, 216, 0.38);
@@ -1332,6 +1337,27 @@ a:hover {
         transform 0.12s ease,
         box-shadow 0.12s ease,
         filter 0.12s ease;
+}
+
+.calendar-event::-webkit-scrollbar {
+    width: 5px;
+}
+
+.calendar-event::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.calendar-event::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
+.calendar-event::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.calendar-event {
+    padding-right: 8px;
 }
 
 .calendar-event:hover {
