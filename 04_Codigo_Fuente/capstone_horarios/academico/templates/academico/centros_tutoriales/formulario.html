@@ -1,0 +1,206 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+{{ titulo }} | Mantenedores
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                MANTENEDORES
+            </div>
+
+            <h1 class="workspace-title">
+                {{ titulo }}
+            </h1>
+
+            <p class="workspace-description">
+                Complete la información correspondiente
+                al Centro Tutorial.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{% url 'centros_tutoriales' %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DATOS DEL CENTRO TUTORIAL
+                </span>
+
+                <h2>
+                    Información general
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="POST"
+            class="planning-form"
+        >
+
+            {% csrf_token %}
+
+
+            {% if form.non_field_errors %}
+
+                <div class="alert alert-danger">
+
+                    {% for error in form.non_field_errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+
+            <div class="row g-4">
+
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.codigo.id_for_label }}">
+                            Código
+                        </label>
+
+                        {{ form.codigo }}
+
+                        {% for error in form.codigo.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-lg-8">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.nombre.id_for_label }}">
+                            Nombre
+                        </label>
+
+                        {{ form.nombre }}
+
+                        {% for error in form.nombre.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label>
+                            Estado
+                        </label>
+
+                        <div
+                            class="
+                                border
+                                p-3
+                                d-flex
+                                align-items-center
+                                gap-2
+                            "
+                        >
+
+                            {{ form.activo }}
+
+                            <label
+                                for="{{ form.activo.id_for_label }}"
+                                class="mb-0"
+                            >
+                                Centro Tutorial activo
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="planning-actions mt-4">
+
+                <div class="form-help">
+                    El código y el nombre deben identificar
+                    de forma única al Centro Tutorial.
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <a
+                        href="{% url 'centros_tutoriales' %}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Cancelar
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        {{ texto_boton }}
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,648 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+Mantenedores | Planificación Docente
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                ADMINISTRACIÓN
+            </div>
+
+            <h1 class="workspace-title">
+                Mantenedores
+            </h1>
+
+            <p class="workspace-description">
+                Administre los datos institucionales,
+                académicos y recursos utilizados por
+                la planificación docente.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         ORGANIZACIÓN
+         ================================================== -->
+
+    <section class="planning-panel mb-4">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    ORGANIZACIÓN
+                </span>
+
+                <h2>
+                    Estructura institucional
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="row g-3">
+
+
+                <!-- ==================================================
+                     CENTROS TUTORIALES
+                     ================================================== -->
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div
+                        class="border p-4 h-100 d-flex flex-column"
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
+
+                        <div class="fw-semibold mb-2">
+                            Centros Tutoriales
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Centros donde se desarrolla
+                            la actividad académica.
+                        </p>
+
+
+                        {% if perms.academico.view_centrotutorial %}
+
+                            <a
+                                href="{% url 'centros_tutoriales' %}"
+                                class="
+                                    btn-enterprise-primary
+                                    maintenance-card-button
+                                    mt-auto
+                                    align-self-start
+                                "
+                            >
+                                Administrar Centros Tutoriales
+                            </a>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     SEDES
+                     ================================================== -->
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div
+                        class="border p-4 h-100 d-flex flex-column"
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
+
+                        <div class="fw-semibold mb-2">
+                            Sedes
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Sedes pertenecientes a cada
+                            Centro Tutorial.
+                        </p>
+
+
+                        {% if perms.academico.view_sede %}
+
+                            <a
+                                href="{% url 'sedes' %}"
+                                class="
+                                    btn-enterprise-primary
+                                    maintenance-card-button
+                                    mt-auto
+                                    align-self-start
+                                "
+                            >
+                                Administrar Sedes
+                            </a>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     FACULTADES
+                     ================================================== -->
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Facultades
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Facultades académicas de
+                            la institución.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     PROGRAMAS ACADÉMICOS
+                     ================================================== -->
+
+                <div class="col-lg-3 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Programas Académicos
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Programas asociados a las
+                            distintas facultades.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ==================================================
+         ACADÉMICOS
+         ================================================== -->
+
+    <section class="planning-panel mb-4">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    ACADÉMICOS
+                </span>
+
+                <h2>
+                    Catálogos académicos
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="row g-3">
+
+
+                <!-- ==================================================
+                     PERIODOS ACADÉMICOS
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Periodos Académicos
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Periodos utilizados para
+                            organizar la planificación.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     MODALIDADES
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Modalidades
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Presencial, virtual,
+                            híbrida y otras modalidades.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     ÁREAS ACADÉMICAS
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Áreas Académicas
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Clasificación académica
+                            de las asignaturas.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     ASIGNATURAS
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Asignaturas
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Catálogo institucional
+                            de asignaturas.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     PLANES DE ESTUDIO
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Planes de Estudio
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Asignaturas, créditos,
+                            semestre y área por programa.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     SEMESTRES
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Semestres
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Catálogo de niveles
+                            semestrales.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ==================================================
+         RECURSOS
+         ================================================== -->
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    RECURSOS
+                </span>
+
+                <h2>
+                    Recursos para la planificación
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="row g-3">
+
+
+                <!-- ==================================================
+                     PROFESORES
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div
+                        class="border p-4 h-100 d-flex flex-column"
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
+
+                        <div class="fw-semibold mb-2">
+                            Profesores
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Gestione los docentes disponibles
+                            para la programación académica.
+                        </p>
+
+
+                        {% if perms.academico.view_profesor %}
+
+                            <a
+                                href="{% url 'profesores' %}"
+                                class="
+                                    btn-enterprise-primary
+                                    maintenance-card-button
+                                    mt-auto
+                                    align-self-start
+                                "
+                            >
+                                Administrar Profesores
+                            </a>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     AULAS
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Aulas
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Espacios físicos y virtuales
+                            disponibles por sede.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================================
+                     GRUPOS
+                     ================================================== -->
+
+                <div class="col-lg-4 col-md-6">
+
+                    <div class="border p-4 h-100 d-flex flex-column">
+
+                        <div class="fw-semibold mb-2">
+                            Grupos
+                        </div>
+
+                        <p class="text-secondary small mb-3">
+                            Grupos académicos por programa,
+                            periodo y semestre.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-sm
+                                maintenance-card-button
+                                mt-auto
+                                align-self-start
+                            "
+                            disabled
+                        >
+                            Próximamente
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}

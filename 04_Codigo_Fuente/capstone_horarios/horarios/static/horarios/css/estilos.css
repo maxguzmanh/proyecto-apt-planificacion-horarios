@@ -1702,3 +1702,23 @@ a:hover {
     }
 
 }
+
+.maintenance-card-button {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    box-sizing: border-box;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 10px;
+
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+
+    text-align: center;
+    white-space: nowrap;
+}
