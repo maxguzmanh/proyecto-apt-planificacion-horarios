@@ -10,10 +10,6 @@ Mantenedores | Planificación Docente
 <div class="app-page">
 
 
-    <!-- ==================================================
-         ENCABEZADO
-         ================================================== -->
-
     <div class="workspace-header">
 
         <div>
@@ -65,14 +61,15 @@ Mantenedores | Planificación Docente
             <div class="row g-3">
 
 
-                <!-- ==================================================
-                     CENTROS TUTORIALES
-                     ================================================== -->
+                <!-- CENTROS -->
 
                 <div class="col-lg-3 col-md-6">
 
                     <div
-                        class="border p-4 h-100 d-flex flex-column"
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
                         style="
                             border-top:
                             3px solid #2563eb !important;
@@ -88,36 +85,31 @@ Mantenedores | Planificación Docente
                             la actividad académica.
                         </p>
 
-
-                        {% if perms.academico.view_centrotutorial %}
-
-                            <a
-                                href="{% url 'centros_tutoriales' %}"
-                                class="
-                                    btn-enterprise-primary
-                                    maintenance-card-button
-                                    mt-auto
-                                    align-self-start
-                                "
-                            >
-                                Administrar Centros Tutoriales
-                            </a>
-
-                        {% endif %}
+                        <a
+                            href="{% url 'centros_tutoriales' %}"
+                            class="
+                                btn-enterprise-primary
+                                maintenance-card-button
+                                mt-auto
+                            "
+                        >
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     SEDES
-                     ================================================== -->
+                <!-- SEDES -->
 
                 <div class="col-lg-3 col-md-6">
 
                     <div
-                        class="border p-4 h-100 d-flex flex-column"
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
                         style="
                             border-top:
                             3px solid #2563eb !important;
@@ -133,35 +125,36 @@ Mantenedores | Planificación Docente
                             Centro Tutorial.
                         </p>
 
-
-                        {% if perms.academico.view_sede %}
-
-                            <a
-                                href="{% url 'sedes' %}"
-                                class="
-                                    btn-enterprise-primary
-                                    maintenance-card-button
-                                    mt-auto
-                                    align-self-start
-                                "
-                            >
-                                Administrar Sedes
-                            </a>
-
-                        {% endif %}
+                        <a
+                            href="{% url 'sedes' %}"
+                            class="
+                                btn-enterprise-primary
+                                maintenance-card-button
+                                mt-auto
+                            "
+                        >
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     FACULTADES
-                     ================================================== -->
+                <!-- FACULTADES -->
 
                 <div class="col-lg-3 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Facultades
@@ -172,33 +165,36 @@ Mantenedores | Planificación Docente
                             la institución.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'facultades' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     PROGRAMAS ACADÉMICOS
-                     ================================================== -->
+                <!-- PROGRAMAS -->
 
                 <div class="col-lg-3 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Programas Académicos
@@ -209,20 +205,16 @@ Mantenedores | Planificación Docente
                             distintas facultades.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'programas_academicos' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
@@ -263,13 +255,20 @@ Mantenedores | Planificación Docente
             <div class="row g-3">
 
 
-                <!-- ==================================================
-                     PERIODOS ACADÉMICOS
-                     ================================================== -->
+                <!-- PERIODOS -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Periodos Académicos
@@ -280,33 +279,36 @@ Mantenedores | Planificación Docente
                             organizar la planificación.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'periodos_academicos' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     MODALIDADES
-                     ================================================== -->
+                <!-- MODALIDADES -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Modalidades
@@ -317,33 +319,36 @@ Mantenedores | Planificación Docente
                             híbrida y otras modalidades.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'modalidades' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     ÁREAS ACADÉMICAS
-                     ================================================== -->
+                <!-- ÁREAS -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Áreas Académicas
@@ -354,33 +359,36 @@ Mantenedores | Planificación Docente
                             de las asignaturas.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'areas_academicas' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     ASIGNATURAS
-                     ================================================== -->
+                <!-- ASIGNATURAS -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Asignaturas
@@ -391,33 +399,36 @@ Mantenedores | Planificación Docente
                             de asignaturas.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'asignaturas' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     PLANES DE ESTUDIO
-                     ================================================== -->
+                <!-- PLANES -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Planes de Estudio
@@ -428,33 +439,36 @@ Mantenedores | Planificación Docente
                             semestre y área por programa.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'planes_estudio' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     SEMESTRES
-                     ================================================== -->
+                <!-- SEMESTRES -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Semestres
@@ -465,20 +479,16 @@ Mantenedores | Planificación Docente
                             semestrales.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'semestres' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
@@ -519,14 +529,15 @@ Mantenedores | Planificación Docente
             <div class="row g-3">
 
 
-                <!-- ==================================================
-                     PROFESORES
-                     ================================================== -->
+                <!-- PROFESORES -->
 
                 <div class="col-lg-4 col-md-6">
 
                     <div
-                        class="border p-4 h-100 d-flex flex-column"
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
                         style="
                             border-top:
                             3px solid #2563eb !important;
@@ -542,35 +553,36 @@ Mantenedores | Planificación Docente
                             para la programación académica.
                         </p>
 
-
-                        {% if perms.academico.view_profesor %}
-
-                            <a
-                                href="{% url 'profesores' %}"
-                                class="
-                                    btn-enterprise-primary
-                                    maintenance-card-button
-                                    mt-auto
-                                    align-self-start
-                                "
-                            >
-                                Administrar Profesores
-                            </a>
-
-                        {% endif %}
+                        <a
+                            href="{% url 'profesores' %}"
+                            class="
+                                btn-enterprise-primary
+                                maintenance-card-button
+                                mt-auto
+                            "
+                        >
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     AULAS
-                     ================================================== -->
+                <!-- AULAS -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Aulas
@@ -581,33 +593,36 @@ Mantenedores | Planificación Docente
                             disponibles por sede.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'aulas' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
                 </div>
 
 
-                <!-- ==================================================
-                     GRUPOS
-                     ================================================== -->
+                <!-- GRUPOS -->
 
                 <div class="col-lg-4 col-md-6">
 
-                    <div class="border p-4 h-100 d-flex flex-column">
+                    <div
+                        class="
+                            border p-4 h-100
+                            d-flex flex-column
+                        "
+                        style="
+                            border-top:
+                            3px solid #2563eb !important;
+                        "
+                    >
 
                         <div class="fw-semibold mb-2">
                             Grupos
@@ -618,20 +633,16 @@ Mantenedores | Planificación Docente
                             periodo y semestre.
                         </p>
 
-                        <button
-                            type="button"
+                        <a
+                            href="{% url 'grupos' %}"
                             class="
-                                btn
-                                btn-outline-secondary
-                                btn-sm
+                                btn-enterprise-primary
                                 maintenance-card-button
                                 mt-auto
-                                align-self-start
                             "
-                            disabled
                         >
-                            Próximamente
-                        </button>
+                            Administrar
+                        </a>
 
                     </div>
 
