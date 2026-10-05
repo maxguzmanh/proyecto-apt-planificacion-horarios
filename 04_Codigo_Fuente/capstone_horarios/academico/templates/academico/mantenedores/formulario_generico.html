@@ -1,0 +1,234 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+{{ titulo }} | Mantenedores
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                MANTENEDORES
+            </div>
+
+            <h1 class="workspace-title">
+                {{ titulo }}
+            </h1>
+
+            <p class="workspace-description">
+                {{ descripcion }}
+            </p>
+
+        </div>
+
+
+        <a
+            href="{% url listado_url %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DATOS DEL REGISTRO
+                </span>
+
+                <h2>
+                    Información general
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="POST"
+            class="planning-form"
+        >
+
+            {% csrf_token %}
+
+
+            {% if form.non_field_errors %}
+
+                <div class="alert alert-danger">
+
+                    {% for error in form.non_field_errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+
+            <div class="row g-4">
+
+                {% for field in form %}
+
+
+                    {% if field.field.widget.input_type == "checkbox" %}
+
+                        <div class="col-lg-4">
+
+                            <div class="enterprise-field">
+
+                                <label>
+                                    {{ field.label }}
+                                </label>
+
+
+                                <div
+                                    class="
+                                        border
+                                        p-3
+                                        d-flex
+                                        align-items-center
+                                        gap-2
+                                    "
+                                >
+
+                                    {{ field }}
+
+                                    <label
+                                        for="{{ field.id_for_label }}"
+                                        class="mb-0"
+                                    >
+                                        Activo
+                                    </label>
+
+                                </div>
+
+
+                                {% for error in field.errors %}
+
+                                    <div
+                                        class="
+                                            text-danger
+                                            small
+                                            mt-1
+                                        "
+                                    >
+                                        {{ error }}
+                                    </div>
+
+                                {% endfor %}
+
+                            </div>
+
+                        </div>
+
+
+                    {% else %}
+
+                        <div class="col-lg-6">
+
+                            <div class="enterprise-field">
+
+                                <label
+                                    for="{{ field.id_for_label }}"
+                                >
+                                    {{ field.label }}
+                                </label>
+
+
+                                {{ field }}
+
+
+                                {% if field.help_text %}
+
+                                    <div
+                                        class="
+                                            text-secondary
+                                            small
+                                            mt-1
+                                        "
+                                    >
+                                        {{ field.help_text }}
+                                    </div>
+
+                                {% endif %}
+
+
+                                {% for error in field.errors %}
+
+                                    <div
+                                        class="
+                                            text-danger
+                                            small
+                                            mt-1
+                                        "
+                                    >
+                                        {{ error }}
+                                    </div>
+
+                                {% endfor %}
+
+                            </div>
+
+                        </div>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            </div>
+
+
+            <div class="planning-actions mt-4">
+
+                <div class="form-help">
+                    Los campos obligatorios deben
+                    completarse antes de guardar.
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <a
+                        href="{% url listado_url %}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Cancelar
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        {{ texto_boton }}
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}

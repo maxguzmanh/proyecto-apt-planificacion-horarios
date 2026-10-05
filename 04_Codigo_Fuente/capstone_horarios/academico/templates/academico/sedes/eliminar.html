@@ -1,0 +1,181 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+Eliminar Sede | Mantenedores
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                MANTENEDORES
+            </div>
+
+            <h1 class="workspace-title">
+                Eliminar Sede
+            </h1>
+
+            <p class="workspace-description">
+                Confirme la eliminación de la sede seleccionada.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{% url 'sedes' %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    CONFIRMACIÓN
+                </span>
+
+                <h2>
+                    Información de la sede
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+            <div class="alert alert-danger mb-4">
+
+                <strong>
+                    ¿Desea eliminar esta sede?
+                </strong>
+
+                <div class="mt-1">
+                    Si posee aulas u otra información
+                    asociada, el sistema impedirá su eliminación.
+                </div>
+
+            </div>
+
+
+            <div class="row g-4">
+
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Código
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ sede.codigo }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="text-secondary small mb-1">
+                        Sede
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ sede.nombre }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <div class="text-secondary small mb-1">
+                        Centro Tutorial
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ sede.centro_tutorial.nombre }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <div class="text-secondary small mb-1">
+                        Estado
+                    </div>
+
+                    <div class="fw-semibold">
+
+                        {% if sede.activo %}
+                            Activa
+                        {% else %}
+                            Inactiva
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <form method="POST" class="mt-4">
+
+                {% csrf_token %}
+
+
+                <div class="planning-actions">
+
+                    <div class="form-help">
+                        Una sede utilizada por la planificación
+                        debe desactivarse en lugar de eliminarse.
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <a
+                            href="{% url 'sedes' %}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancelar
+                        </a>
+
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger"
+                        >
+                            Eliminar Sede
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}

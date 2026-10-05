@@ -1,0 +1,291 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+{{ titulo }} | Mantenedores
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                MANTENEDORES
+            </div>
+
+            <h1 class="workspace-title">
+                {{ titulo }}
+            </h1>
+
+            <p class="workspace-description">
+                Complete la información del profesor
+                que estará disponible para la
+                planificación docente.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{% url 'profesores' %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+
+    <!-- ==================================================
+         FORMULARIO
+         ================================================== -->
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DATOS DEL PROFESOR
+                </span>
+
+                <h2>
+                    Información general
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <form
+            method="POST"
+            class="planning-form"
+        >
+
+            {% csrf_token %}
+
+
+            <!-- ERRORES GENERALES -->
+
+            {% if form.non_field_errors %}
+
+                <div class="alert alert-danger">
+
+                    {% for error in form.non_field_errors %}
+
+                        <div>
+                            {{ error }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+
+            <div class="row g-4">
+
+
+                <!-- IDENTIFICACIÓN -->
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.identificacion.id_for_label }}">
+                            Identificación
+                        </label>
+
+                        {{ form.identificacion }}
+
+                        {% for error in form.identificacion.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- NOMBRE -->
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.nombre.id_for_label }}">
+                            Nombre
+                        </label>
+
+                        {{ form.nombre }}
+
+                        {% for error in form.nombre.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- APELLIDO -->
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.apellido.id_for_label }}">
+                            Apellido
+                        </label>
+
+                        {{ form.apellido }}
+
+                        {% for error in form.apellido.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- CORREO -->
+
+                <div class="col-lg-8">
+
+                    <div class="enterprise-field">
+
+                        <label for="{{ form.correo_institucional.id_for_label }}">
+                            Correo institucional
+                        </label>
+
+                        {{ form.correo_institucional }}
+
+                        {% for error in form.correo_institucional.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- ACTIVO -->
+
+                <div class="col-lg-4">
+
+                    <div class="enterprise-field">
+
+                        <label>
+                            Estado
+                        </label>
+
+
+                        <div
+                            class="
+                                border
+                                p-3
+                                d-flex
+                                align-items-center
+                                gap-2
+                            "
+                        >
+
+                            {{ form.activo }}
+
+                            <label
+                                for="{{ form.activo.id_for_label }}"
+                                class="mb-0"
+                            >
+                                Profesor activo
+                            </label>
+
+                        </div>
+
+
+                        {% for error in form.activo.errors %}
+
+                            <div class="text-danger small mt-1">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 ACCIONES
+                 ================================================== -->
+
+            <div class="planning-actions mt-4">
+
+                <div class="form-help">
+
+                    La identificación y el correo
+                    institucional deben ser únicos
+                    para cada profesor.
+
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <a
+                        href="{% url 'profesores' %}"
+                        class="btn btn-outline-secondary"
+                    >
+                        Cancelar
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn-enterprise-primary"
+                    >
+                        {{ texto_boton }}
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}

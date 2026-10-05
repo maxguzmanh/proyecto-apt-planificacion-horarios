@@ -1,0 +1,199 @@
+{% extends "horarios/base.html" %}
+
+{% block title %}
+Eliminar profesor | Mantenedores
+{% endblock %}
+
+
+{% block content %}
+
+<div class="app-page">
+
+
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                MANTENEDORES
+            </div>
+
+            <h1 class="workspace-title">
+                Eliminar profesor
+            </h1>
+
+            <p class="workspace-description">
+                Confirme la eliminación del profesor
+                seleccionado.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{% url 'profesores' %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
+    </div>
+
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    CONFIRMACIÓN
+                </span>
+
+                <h2>
+                    Información del profesor
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+
+            <div class="alert alert-danger mb-4">
+
+                <strong>
+                    ¿Desea eliminar este profesor?
+                </strong>
+
+                <div class="mt-1">
+
+                    Revise que el docente no sea necesario
+                    para la planificación académica antes
+                    de continuar.
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-4">
+
+
+                <div class="col-md-4">
+
+                    <div class="text-secondary small mb-1">
+                        Identificación
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ profesor.identificacion }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <div class="text-secondary small mb-1">
+                        Profesor
+                    </div>
+
+                    <div class="fw-semibold">
+                        {{ profesor.nombre }}
+                        {{ profesor.apellido }}
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <div class="text-secondary small mb-1">
+                        Estado
+                    </div>
+
+                    <div class="fw-semibold">
+
+                        {% if profesor.activo %}
+                            Activo
+                        {% else %}
+                            Inactivo
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <div class="text-secondary small mb-1">
+                        Correo institucional
+                    </div>
+
+                    <div class="fw-semibold">
+
+                        {% if profesor.correo_institucional %}
+
+                            {{ profesor.correo_institucional }}
+
+                        {% else %}
+
+                            Sin correo institucional
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <form method="POST" class="mt-4">
+
+                {% csrf_token %}
+
+
+                <div class="planning-actions">
+
+                    <div class="form-help">
+                        Esta acción puede estar restringida
+                        si el profesor posee planificación
+                        académica asociada.
+                    </div>
+
+
+                    <div class="d-flex gap-2">
+
+                        <a
+                            href="{% url 'profesores' %}"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancelar
+                        </a>
+
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger"
+                        >
+                            Eliminar profesor
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}

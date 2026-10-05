@@ -1,76 +1,382 @@
 {% extends "horarios/base.html" %}
 
 {% block title %}
-Eliminar asignación
+Eliminar asignación | Planificación Docente
 {% endblock %}
 
 
 {% block content %}
 
-<div class="row justify-content-center">
-
-    <div class="col-lg-7">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body p-5">
-
-                <h1 class="h3 mb-3">
-                    Eliminar asignación
-                </h1>
-
-                <p class="text-secondary">
-                    ¿Está seguro de que desea eliminar este horario?
-                </p>
+<div class="app-page">
 
 
-                <div class="border rounded p-3 mb-4">
+    <!-- ==================================================
+         ENCABEZADO
+         ================================================== -->
 
-                    <div class="fw-semibold mb-2">
-                        {{ horario.asignatura.nombre }}
+    <div class="workspace-header">
+
+        <div>
+
+            <div class="workspace-eyebrow">
+                PLANIFICACIÓN DOCENTE
+            </div>
+
+            <h1 class="workspace-title">
+                Eliminar asignación
+            </h1>
+
+            <p class="workspace-description">
+                Revise la información antes de eliminar
+                definitivamente esta asignación de la
+                planificación.
+            </p>
+
+        </div>
+
+        <div>
+
+            <a
+                href="{{ volver_a }}"
+                class="btn btn-outline-secondary"
+            >
+                Volver
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         TARJETA PRINCIPAL
+         ================================================== -->
+
+    <section class="planning-panel">
+
+        <div class="panel-heading-enterprise">
+
+            <div>
+
+                <span class="panel-kicker">
+                    CONFIRMACIÓN
+                </span>
+
+                <h2>
+                    Información de la asignación
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="planning-form">
+
+
+            <!-- ==================================================
+                 ADVERTENCIA
+                 ================================================== -->
+
+            <div class="alert alert-danger mb-4">
+
+                <strong>
+                    Esta acción no se puede deshacer.
+                </strong>
+
+                <div class="mt-1">
+
+                    La asignación será eliminada de la
+                    planificación académica.
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 INFORMACIÓN ACADÉMICA
+                 ================================================== -->
+
+            <div class="mb-4">
+
+                <div class="panel-kicker mb-3">
+                    ASIGNATURA Y DOCENTE
+                </div>
+
+
+                <div class="row g-4">
+
+
+                    <!-- ASIGNATURA -->
+
+                    <div class="col-md-6">
+
+                        <div class="text-secondary small mb-1">
+                            Asignatura
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ oferta.asignatura.codigo }}
+                            - {{ oferta.asignatura.nombre }}
+                        </div>
+
                     </div>
 
-                    <div class="text-secondary">
 
-                        {{ horario.get_dia_display }}
+                    <!-- PROFESOR -->
 
-                        ·
+                    <div class="col-md-6">
 
-                        {{ horario.hora_inicio|time:"H:i" }}
-                        -
-                        {{ horario.hora_fin|time:"H:i" }}
+                        <div class="text-secondary small mb-1">
+                            Profesor
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ oferta.profesor }}
+                        </div>
 
                     </div>
 
-                    <div class="text-secondary">
-                        {{ horario.profesor }}
+
+                    <!-- MODALIDAD -->
+
+                    <div class="col-md-6">
+
+                        <div class="text-secondary small mb-1">
+                            Modalidad
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ oferta.modalidad.nombre }}
+                        </div>
+
                     </div>
 
-                    <div class="text-secondary">
-                        {{ horario.aula.nombre }}
+
+                    <!-- PERIODO -->
+
+                    <div class="col-md-6">
+
+                        <div class="text-secondary small mb-1">
+                            Periodo Académico
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ oferta.periodo.nombre }}
+                        </div>
+
                     </div>
 
                 </div>
 
+            </div>
 
-                <div class="alert alert-warning">
-                    Esta acción eliminará permanentemente
-                    la asignación del horario.
+
+            <hr>
+
+
+            <!-- ==================================================
+                 GRUPOS
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    GRUPOS ASOCIADOS
                 </div>
 
 
-                <form method="POST">
+                {% if grupos %}
 
-                    {% csrf_token %}
+                    <div class="row g-3">
 
-                    <input
-                        type="hidden"
-                        name="volver_a"
-                        value="{{ volver_a }}"
-                    >
+                        {% for grupo in grupos %}
+
+                            <div class="col-lg-6">
+
+                                <div
+                                    class="border p-3 h-100"
+                                    style="background: #f8fafc;"
+                                >
+
+                                    <div class="fw-semibold">
+                                        {{ grupo.programa.nombre }}
+                                    </div>
+
+                                    <div class="text-secondary small mt-1">
+
+                                        Grupo:
+                                        {{ grupo.codigo }}
+
+                                    </div>
+
+                                    <div class="text-secondary small">
+
+                                        Semestre:
+                                        {{ grupo.semestre.get_numero_display }}
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="text-secondary">
+                        No existen grupos asociados.
+                    </div>
+
+                {% endif %}
+
+            </div>
 
 
-                    <div class="d-flex justify-content-end gap-2">
+            <hr>
+
+
+            <!-- ==================================================
+                 HORARIO Y UBICACIÓN
+                 ================================================== -->
+
+            <div class="my-4">
+
+                <div class="panel-kicker mb-3">
+                    HORARIO Y UBICACIÓN
+                </div>
+
+
+                <div class="row g-4">
+
+
+                    <!-- DÍA -->
+
+                    <div class="col-md-3">
+
+                        <div class="text-secondary small mb-1">
+                            Día
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ horario.get_dia_display }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- HORA INICIO -->
+
+                    <div class="col-md-3">
+
+                        <div class="text-secondary small mb-1">
+                            Hora inicio
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ horario.hora_inicio|time:"H:i" }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- HORA FIN -->
+
+                    <div class="col-md-3">
+
+                        <div class="text-secondary small mb-1">
+                            Hora término
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ horario.hora_fin|time:"H:i" }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- AULA -->
+
+                    <div class="col-md-3">
+
+                        <div class="text-secondary small mb-1">
+                            Aula
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ horario.aula.nombre }}
+                        </div>
+
+                    </div>
+
+
+                    <!-- SEDE -->
+
+                    <div class="col-md-6">
+
+                        <div class="text-secondary small mb-1">
+                            Sede
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ horario.aula.sede.nombre }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 EXPLICACIÓN SEGÚN TIPO
+                 ================================================== -->
+
+            {% if grupos|length > 1 %}
+
+                <div class="alert alert-warning mt-4">
+
+                    Esta es una
+                    <strong>asignación transversal</strong>
+                    y actualmente se encuentra asociada a
+                    {{ grupos|length }} grupos.
+
+                </div>
+
+            {% endif %}
+
+
+            <!-- ==================================================
+                 FORMULARIO DE ELIMINACIÓN
+                 ================================================== -->
+
+            <form method="POST" class="mt-4">
+
+                {% csrf_token %}
+
+                <input
+                    type="hidden"
+                    name="volver_a"
+                    value="{{ volver_a }}"
+                >
+
+
+                <div class="planning-actions">
+
+                    <div class="form-help">
+
+                        Confirme solamente si desea retirar
+                        esta asignación de la planificación.
+
+                    </div>
+
+
+                    <div class="d-flex gap-2">
 
                         <a
                             href="{{ volver_a }}"
@@ -79,22 +385,23 @@ Eliminar asignación
                             Cancelar
                         </a>
 
+
                         <button
                             type="submit"
                             class="btn btn-danger"
                         >
-                            Sí, eliminar
+                            Eliminar asignación
                         </button>
 
                     </div>
 
-                </form>
+                </div>
 
-            </div>
+            </form>
 
         </div>
 
-    </div>
+    </section>
 
 </div>
 
