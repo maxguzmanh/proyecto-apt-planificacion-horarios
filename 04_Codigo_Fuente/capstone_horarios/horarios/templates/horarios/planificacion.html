@@ -1,317 +1,101 @@
 {% extends "horarios/base.html" %}
 {% load static %}
-
-{% block title %}
-Planificación de Horarios
-{% endblock %}
-
-
+{% block title %}Planificación | UniPlan{% endblock %}
 {% block content %}
-
-<div class="app-page">
-
-
-    <!-- ==================================================
-         ENCABEZADO
-         ================================================== -->
-
+<div class="app-page planning-workspace">
     <div class="workspace-header">
-
         <div>
-
-            <div class="workspace-eyebrow">
-                PLANIFICACIÓN DOCENTE
-            </div>
-
-            <h1 class="workspace-title">
-                Planificación de Horarios
-            </h1>
-
-            <p class="workspace-description">
-                Consulte y gestione la programación académica
-                aplicando los filtros correspondientes.
-            </p>
-
+            <div class="workspace-eyebrow">PLANIFICACIÓN DOCENTE</div>
+            <h1 class="workspace-title">Espacio de planificación</h1>
+            <p class="workspace-description">Seleccione el contexto académico y consulte la programación semanal.</p>
         </div>
-
     </div>
 
-
-    <!-- ==================================================
-         FILTROS
-         ================================================== -->
-
-    <section class="planning-panel mb-4">
-
+    <section class="planning-panel planning-filter-panel" aria-labelledby="titulo-filtros">
         <div class="panel-heading-enterprise">
-
-            <div>
-
-                <span class="panel-kicker">
-                    CONTEXTO ACADÉMICO
-                </span>
-
-                <h2>
-                    Filtros de planificación
-                </h2>
-
-            </div>
-
+            <div><span class="panel-kicker">CONTEXTO ACADÉMICO</span><h2 id="titulo-filtros">Filtros de planificación</h2></div>
         </div>
-
-
-        <form
-            id="filtros-planificacion"
-            method="GET"
-            action="{% url 'planificacion' %}"
-            class="planning-form"
-
-            data-selected-centro="{{ centro_id }}"
-            data-selected-sede="{{ sede_id }}"
-            data-selected-facultad="{{ facultad_id }}"
-            data-selected-programa="{{ programa_id }}"
-            data-selected-periodo="{{ periodo_id }}"
-            data-selected-semestre="{{ semestre_id }}"
-            data-selected-grupo="{{ grupo_id }}"
-        >
-
-            <div class="enterprise-form-grid">
-
-
-                <!-- CENTRO -->
-
+        <form id="filtros-planificacion" method="GET" action="{% url 'planificacion' %}" class="planning-form"
+              data-selected-centro="{{ centro_id }}" data-selected-sede="{{ sede_id }}"
+              data-selected-facultad="{{ facultad_id }}" data-selected-programa="{{ programa_id }}"
+              data-selected-periodo="{{ periodo_id }}" data-selected-semestre="{{ semestre_id }}"
+              data-selected-grupo="{{ grupo_id }}">
+            <div class="planning-horizontal-filters">
                 <div class="enterprise-field">
-
-                    <label for="centro">
-                        Centro Tutorial
-                    </label>
-
-                    <select
-                        id="centro"
-                        name="centro"
-                        class="form-select"
-                        required
-                    >
-
-                        <option value="">
-                            Seleccione un Centro Tutorial...
-                        </option>
-
-                        {% for item in centros %}
-
-                            <option value="{{ item.id }}">
-                                {{ item.nombre }}
-                            </option>
-
-                        {% endfor %}
-
+                    <label for="centro">Centro Tutorial</label>
+                    <select id="centro" name="centro" class="form-select" required>
+                        <option value="">Seleccione un Centro Tutorial...</option>
+                        {% for item in centros %}<option value="{{ item.id }}" {% if centro_id == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nombre }}</option>{% endfor %}
                     </select>
-
                 </div>
-
-
-                <!-- FACULTAD -->
-
                 <div class="enterprise-field">
-
-                    <label for="facultad">
-                        Facultad
-                    </label>
-
-                    <select
-                        id="facultad"
-                        name="facultad"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione una facultad...
-                        </option>
-
-                    </select>
-
+                    <label for="facultad">Facultad</label>
+                    <select id="facultad" name="facultad" class="form-select" required disabled><option value="">Seleccione una facultad...</option></select>
                 </div>
-
-
-                <!-- PROGRAMA -->
-
                 <div class="enterprise-field">
-
-                    <label for="programa">
-                        Programa Académico
-                    </label>
-
-                    <select
-                        id="programa"
-                        name="programa"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un programa...
-                        </option>
-
-                    </select>
-
+                    <label for="programa">Programa Académico</label>
+                    <select id="programa" name="programa" class="form-select" required disabled><option value="">Seleccione un programa...</option></select>
                 </div>
-
-
-                <!-- PERIODO -->
-
                 <div class="enterprise-field">
-
-                    <label for="periodo">
-                        Periodo Académico
-                    </label>
-
-                    <select
-                        id="periodo"
-                        name="periodo"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un periodo...
-                        </option>
-
-                    </select>
-
+                    <label for="periodo">Periodo Académico</label>
+                    <select id="periodo" name="periodo" class="form-select" required disabled><option value="">Seleccione un periodo...</option></select>
                 </div>
-
-
-                <!-- SEMESTRE -->
-
                 <div class="enterprise-field">
-
-                    <label for="semestre">
-                        Semestre
-                    </label>
-
-                    <select
-                        id="semestre"
-                        name="semestre"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un semestre...
-                        </option>
-
-                    </select>
-
+                    <label for="sede">Sede <span class="text-secondary fw-normal">(opcional)</span></label>
+                    <select id="sede" name="sede" class="form-select" disabled><option value="">Todas las sedes</option></select>
                 </div>
-
-
-                <!-- SEDE OPCIONAL -->
-
                 <div class="enterprise-field">
-
-                    <label for="sede">
-                        Sede
-                        <span class="text-secondary fw-normal">
-                            (opcional)
-                        </span>
-                    </label>
-
-                    <select
-                        id="sede"
-                        name="sede"
-                        class="form-select"
-                        disabled
-                    >
-
-                        <option value="">
-                            Todas las sedes
-                        </option>
-
-                    </select>
-
+                    <label for="grupo">Grupo <span class="text-secondary fw-normal">(opcional)</span></label>
+                    <select id="grupo" name="grupo" class="form-select" disabled><option value="">Todos los grupos</option></select>
                 </div>
-
-
-                <!-- GRUPO OPCIONAL -->
-
-                <div class="enterprise-field field-wide">
-
-                    <label for="grupo">
-                        Grupo
-                        <span class="text-secondary fw-normal">
-                            (opcional)
-                        </span>
-                    </label>
-
-                    <select
-                        id="grupo"
-                        name="grupo"
-                        class="form-select"
-                        disabled
-                    >
-
-                        <option value="">
-                            Todos los grupos
-                        </option>
-
-                    </select>
-
-                </div>
-
             </div>
-
-
-            <!-- ==================================================
-                 ACCIONES
-                 ================================================== -->
-
             <div class="planning-actions">
-
-                <div class="form-help">
-
-                    Si no selecciona Sede o Grupo,
-                    la planificación mostrará todas las
-                    sedes y grupos disponibles para el
-                    contexto académico seleccionado.
-
-                </div>
-
-
+                <div class="form-help">Seleccione el semestre en el panel académico. Sede y Grupo permiten acotar la consulta.</div>
                 <div class="d-flex gap-2">
-
-                    <a
-                        href="{% url 'planificacion' %}"
-                        class="btn btn-outline-secondary"
-                    >
-                        Limpiar filtros
-                    </a>
-
-
-                    <button
-                        type="submit"
-                        class="btn-enterprise-primary"
-                    >
-                        Aplicar filtros
-                    </button>
-
+                    <a href="{% url 'planificacion' %}" class="btn btn-outline-secondary">Limpiar filtros</a>
+                    <button type="submit" class="btn-enterprise-primary">Aplicar filtros</button>
                 </div>
-
             </div>
-
         </form>
-
     </section>
 
-
-    <!-- ==================================================
-         SIN FILTROS COMPLETOS
-         ================================================== -->
-
+    <div class="planning-workspace-grid">
+        <aside class="planning-panel academic-panel" aria-labelledby="titulo-academico">
+            <div class="panel-heading-enterprise">
+                <div><span class="panel-kicker">PLAN DE ESTUDIO</span><h2 id="titulo-academico">Panel académico</h2></div>
+            </div>
+            <div class="planning-form">
+                <div class="enterprise-field">
+                    <label for="semestre">Semestre</label>
+                    <select id="semestre" name="semestre" form="filtros-planificacion" class="form-select" required disabled>
+                        <option value="">Seleccione un semestre...</option>
+                    </select>
+                    <p class="form-help mt-2">Seleccione un semestre y aplique los filtros para consultar sus asignaturas.</p>
+                </div>
+                <div class="academic-list-heading"><h3>Asignaturas del semestre</h3><span>{{ asignaturas_semestre|length }}</span></div>
+                <div class="academic-subject-list">
+                    {% for item in asignaturas_semestre %}
+                    <details class="academic-subject-card">
+                        <summary><span class="subject-code">{{ item.plan.asignatura.codigo }}</span><strong>{{ item.plan.asignatura.nombre }}</strong></summary>
+                        <div class="academic-subject-content">
+                            <div class="subject-metadata">{{ item.plan.creditos }} créditos{% if item.plan.area_academica %} · {{ item.plan.area_academica.nombre }}{% endif %}</div>
+                            <div class="subject-section-label">Profesores programados</div>
+                            {% for profesor in item.profesores %}<div class="subject-professor">{{ profesor }}</div>{% empty %}<p class="text-secondary small mb-0">Sin profesor programado en esta consulta.</p>{% endfor %}
+                            <div class="subject-availability-zone">
+                                <div class="subject-section-label">Profesores / horas disponibles</div>
+                                <p class="text-secondary small mb-0">Disponibilidad por consultar.</p>
+                            </div>
+                        </div>
+                    </details>
+                    {% empty %}
+                    <div class="academic-empty-state">
+                        {% if filtros_completos %}No hay asignaturas activas en el plan de estudio para este semestre.{% else %}Seleccione el contexto académico y un semestre para ver las asignaturas.{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+        <section class="planning-calendar-panel" aria-label="Horario semanal">
     {% if not filtros_completos %}
 
         <div class="alert alert-warning">
@@ -693,15 +477,10 @@ Planificación de Horarios
 
     {% endif %}
 
+        </section>
+    </div>
 </div>
-
 {% endblock %}
-
-
 {% block scripts %}
-
-<script
-    src="{% static 'horarios/js/selects.js' %}"
-></script>
-
+<script src="{% static 'horarios/js/selects.js' %}"></script>
 {% endblock %}

@@ -44,165 +44,35 @@
          BARRA DE NAVEGACIÓN
          ================================================== -->
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-
-        <div class="container">
-
-
-            <!-- Nombre del sistema -->
-
-            <a
-                class="navbar-brand fw-semibold"
-                href="{% url 'inicio' %}"
-            >
-                Planificación de Horarios
-            </a>
-
-
-            <!-- Botón responsive -->
-
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarPrincipal"
-                aria-controls="navbarPrincipal"
-                aria-expanded="false"
-                aria-label="Mostrar navegación"
-            >
-
-                <span class="navbar-toggler-icon"></span>
-
-            </button>
-
-
-            <!-- Menú -->
-
-            <div
-                class="collapse navbar-collapse"
-                id="navbarPrincipal"
-            >
-
-                <ul class="navbar-nav ms-auto align-items-lg-center">
-
-
-                    <!-- Inicio -->
-
-                    <li class="nav-item">
-
-                        <a
-                            class="nav-link"
-                            href="{% url 'inicio' %}"
-                        >
-                            Inicio
-                        </a>
-
-                    </li>
-
-
-                    <!-- Planificación -->
-
-                    <li class="nav-item">
-
-                        <a
-                            class="nav-link"
-                            href="{% url 'inicio' %}"
-                        >
-                            Planificación
-                        </a>
-
-                    </li>
-
-
-                    <!-- Administración -->
-
-                    {% if request.user.is_staff %}
-
-                        <li class="nav-item">
-
-                            <a
-                                class="nav-link"
-                                href="/admin/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Administración
-                            </a>
-
-                        </li>
-
-                    {% endif %}
-
-
-                    <!-- Separador visual -->
-
-                    {% if request.user.is_authenticated %}
-
-                        <li class="nav-item d-none d-lg-block">
-
-                            <span class="nav-link text-secondary">
-                                |
-                            </span>
-
-                        </li>
-
-
-                        <!-- Usuario conectado -->
-
-                        <li class="nav-item">
-
-                            <span class="nav-link text-light">
-
-                                Usuario:
-                                <strong>
-                                    {{ request.user.username }}
-                                </strong>
-
-                            </span>
-
-                        </li>
-
-
-                        <!-- Cerrar sesión -->
-
-                        <li class="nav-item">
-
-                            <form
-                                method="POST"
-                                action="{% url 'logout' %}"
-                                class="d-inline"
-                            >
-
-                                {% csrf_token %}
-
-                                <button
-                                    type="submit"
-                                    class="btn nav-link border-0"
-                                >
-                                    Cerrar sesión
-                                </button>
-
-                            </form>
-
-                        </li>
-
-                    {% endif %}
-
-
-                </ul>
-
-            </div>
-
+    <a class="app-skip-link" href="#contenido-principal">Ir al contenido</a>
+    <aside class="app-sidebar" aria-label="Menú principal">
+        <a class="sidebar-brand" href="{% url 'inicio' %}">UniPlan<span>Planificación académica</span></a>
+        <nav class="sidebar-navigation" aria-label="Navegación">
+            <a href="{% url 'inicio' %}" {% if request.resolver_match.url_name == 'inicio' %}class="is-active" aria-current="page"{% endif %}>Inicio</a>
+            <a href="{% url 'planificacion' %}" {% if request.resolver_match.url_name == 'planificacion' %}class="is-active" aria-current="page"{% endif %}>Planificación</a>
+            <a href="{% url 'mantenedores' %}" {% if request.resolver_match.app_name == 'academico' or '/mantenedores/' in request.path %}class="is-active" aria-current="page"{% endif %}>Administración</a>
+            {% if request.user.is_staff %}
+                <a href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración Django ↗</a>
+            {% endif %}
+        </nav>
+        {% if request.user.is_authenticated %}
+        <div class="sidebar-account">
+            <span class="sidebar-account-label">Usuario actual</span>
+            <strong>{{ request.user.username }}</strong>
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+            </form>
         </div>
-
-    </nav>
+        {% endif %}
+    </aside>
 
 
     <!-- ==================================================
          CONTENIDO PRINCIPAL
          ================================================== -->
 
-    <main class="container py-5">
+    <main id="contenido-principal" class="app-main" tabindex="-1">
 
         <!-- Mensajes del sistema -->
 
