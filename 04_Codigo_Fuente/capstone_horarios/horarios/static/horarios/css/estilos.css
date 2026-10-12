@@ -1812,3 +1812,19 @@ a:hover {
 .subject-availability-list { list-style: none; padding: 0; margin: 0; font-size: 11px; }
 .subject-availability-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px; margin-top: 5px; }
 .academic-subject-card summary .subject-code { display: block; margin-top: 7px; }
+
+
+/* FullCalendar: bloques semanales UniPlan */
+.uniplan-calendar-scroll { overflow-x: auto; }
+#uniplan-calendar { min-width: 850px; --fc-border-color: var(--ui-border); --fc-page-bg-color: #fff; --fc-neutral-bg-color: var(--ui-surface-soft); }
+#uniplan-calendar .fc-col-header-cell { background: #eaf0f6; color: var(--ui-navy-dark); padding: 12px 0; font-size: 12px; }
+#uniplan-calendar .fc-col-header-cell-cushion { color: inherit; text-decoration: none; }
+#uniplan-calendar .fc-timegrid-slot-label { font-size: 10px; color: var(--ui-text-secondary); }
+#uniplan-calendar .fc-timegrid-slot { height: 24px; }
+#uniplan-calendar .fc-event { border-radius: 4px; border: 1px solid #2563d8; border-left: 3px solid #f6c344; background: #2563d8; color: #fff; }
+#uniplan-calendar .fc-event.evento-virtual { background: #6941c6; border-color: #6941c6; border-left-color: #c4b5fd; }
+#uniplan-calendar .fc-event.evento-hibrida { background: #107850; border-color: #107850; border-left-color: #6ee7b7; }
+#uniplan-calendar .fc-event.evento-transversal { background: #c6570c; border-color: #c6570c; border-left-color: #fde68a; }
+.uniplan-event-content { padding: 4px 5px; overflow: auto; height: 100%; }
+.uniplan-event-title { font-size: 11px; font-weight: 700; line-height: 1.3; }
+.uniplan-event-time, .uniplan-event-detail { font-size: 10px; line-height: 1.4; margin-top: 2px; }

@@ -1,10 +1,14 @@
+import json
+from datetime import date, datetime
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Prefetch
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_GET, require_POST
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -27,7 +31,8 @@ from academico.models import (
 )
 
 from .services import obtener_panel_academico
-from .forms import HorarioForm, NuevaAsignacionForm
+from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm
+from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento
 from .models import (
     Grupo,
     Horario,
@@ -39,9 +44,6 @@ from .models import (
 # CONFIGURACIÓN DEL CALENDARIO
 # ==========================================================
 
-HORA_INICIO_CALENDARIO = 6
-HORA_FIN_CALENDARIO = 22
-PIXELES_POR_MINUTO = 0.75
 
 
 # ==========================================================
@@ -168,261 +170,14 @@ def planificacion(request):
     # ======================================================
 
     if filtros_completos:
-
-        centro = get_object_or_404(
-            CentroTutorial,
-            pk=centro_id,
-            activo=True,
-        )
-
-        facultad = get_object_or_404(
-            Facultad,
-            pk=facultad_id,
-            activo=True,
-        )
-
-        programa = get_object_or_404(
-            ProgramaAcademico,
-            pk=programa_id,
-            facultad=facultad,
-            activo=True,
-        )
-
-        # Verificamos que el programa esté disponible
-        # en el Centro Tutorial seleccionado.
-
-        get_object_or_404(
-            ProgramaCentroTutorial,
-            programa=programa,
-            centro_tutorial=centro,
-            activo=True,
-        )
-
-        periodo = get_object_or_404(
-            PeriodoAcademico,
-            pk=periodo_id,
-            activo=True,
-        )
-
-        semestre = get_object_or_404(
-            Semestre,
-            pk=semestre_id,
-        )
-
-        # ==================================================
-        # SEDE OPCIONAL
-        # ==================================================
-
-        if sede_id:
-
-            sede = get_object_or_404(
-                Sede,
-                pk=sede_id,
-                centro_tutorial=centro,
-                activo=True,
-            )
-
-        # ==================================================
-        # GRUPO OPCIONAL
-        # ==================================================
-
-        if grupo_id:
-
-            grupo = get_object_or_404(
-                Grupo,
-                pk=grupo_id,
-                centro_tutorial=centro,
-                programa=programa,
-                periodo=periodo,
-                semestre=semestre,
-                activo=True,
-            )
-
-        # ==================================================
-        # CONSULTA BASE
-        # ==================================================
-
-        horarios_query = Horario.objects.filter(
-            activo=True,
-            oferta__activo=True,
-            oferta__periodo=periodo,
-            oferta__grupos__centro_tutorial=centro,
-            oferta__grupos__programa=programa,
-            oferta__grupos__semestre=semestre,
-        )
-
-        # ==================================================
-        # FILTRO DE SEDE
-        #
-        # Solamente se aplica si el usuario seleccionó una.
-        # ==================================================
-
-        if sede:
-
-            horarios_query = horarios_query.filter(
-                aula__sede=sede,
-            )
-
-        # ==================================================
-        # FILTRO DE GRUPO
-        # ==================================================
-
-        if grupo:
-
-            horarios_query = horarios_query.filter(
-                oferta__grupos=grupo,
-            )
-
-        horarios = list(
-            horarios_query.select_related(
-                "oferta",
-                "oferta__asignatura",
-                "oferta__profesor",
-                "oferta__periodo",
-                "oferta__modalidad",
-                "aula",
-                "aula__sede",
-            )
-            .prefetch_related(
-                "oferta__grupos",
-            )
-            .distinct()
-            .order_by(
-                "dia",
-                "hora_inicio",
-            )
-        )
-
-    # ======================================================
-    # DÍAS
-    # ======================================================
-
-    dias = DiaSemana.choices
-
-    # ======================================================
-    # DIMENSIONES DEL CALENDARIO
-    # ======================================================
-
-    inicio_calendario = HORA_INICIO_CALENDARIO * 60
-    fin_calendario = HORA_FIN_CALENDARIO * 60
-
-    altura_calendario = int((fin_calendario - inicio_calendario) * PIXELES_POR_MINUTO)
-
-    # ======================================================
-    # HORAS DEL CALENDARIO
-    # ======================================================
-
-    horas_calendario = []
-
-    for hora in range(
-        HORA_INICIO_CALENDARIO,
-        HORA_FIN_CALENDARIO,
-    ):
-
-        minutos = hora * 60
-
-        top = int((minutos - inicio_calendario) * PIXELES_POR_MINUTO)
-
-        horas_calendario.append(
-            {
-                "texto": f"{hora:02d}:00",
-                "top": top,
-            }
-        )
-
-    # ======================================================
-    # CONSTRUIR DÍAS DEL CALENDARIO
-    # ======================================================
-
-    dias_calendario = []
-
-    for codigo, nombre in dias:
-
-        bloques = []
-
-        for horario in horarios:
-
-            if horario.dia != codigo:
-                continue
-
-            inicio = horario.hora_inicio.hour * 60 + horario.hora_inicio.minute
-
-            fin = horario.hora_fin.hour * 60 + horario.hora_fin.minute
-
-            if fin <= inicio_calendario or inicio >= fin_calendario:
-                continue
-
-            inicio_visible = max(
-                inicio,
-                inicio_calendario,
-            )
-
-            fin_visible = min(
-                fin,
-                fin_calendario,
-            )
-
-            top = int((inicio_visible - inicio_calendario) * PIXELES_POR_MINUTO)
-
-            altura = max(
-                int((fin_visible - inicio_visible) * PIXELES_POR_MINUTO),
-                30,
-            )
-
-            # ==================================================
-            # INFORMACIÓN DE GRUPOS
-            # ==================================================
-
-            grupos_oferta = list(horario.oferta.grupos.all())
-
-            es_transversal = len(grupos_oferta) > 1
-
-            # ==================================================
-            # COLOR DEL EVENTO
-            # ==================================================
-
-            if es_transversal:
-
-                clase_evento = "evento-transversal"
-
-            else:
-
-                codigo_modalidad = horario.oferta.modalidad.codigo.strip().upper()
-
-                if codigo_modalidad == "VIR":
-
-                    clase_evento = "evento-virtual"
-
-                elif codigo_modalidad == "HIB":
-
-                    clase_evento = "evento-hibrida"
-
-                else:
-
-                    clase_evento = "evento-presencial"
-
-            bloques.append(
-                {
-                    "horario": horario,
-                    "top": top,
-                    "altura": altura,
-                    "clase_evento": clase_evento,
-                    "es_transversal": es_transversal,
-                    "grupos": grupos_oferta,
-                }
-            )
-
-        dias_calendario.append(
-            {
-                "codigo": codigo,
-                "nombre": nombre,
-                "horarios": bloques,
-            }
-        )
-
-    # ======================================================
-    # CONTEXTO
-    # ======================================================
+        try:
+            contexto = resolver_contexto_calendario(request.GET)
+        except ValidationError as error:
+            raise Http404("Filtros de planificación inválidos.") from error
+        centro, facultad, programa = contexto["centro"], contexto["facultad"], contexto["programa"]
+        periodo, semestre = contexto["periodo"], contexto["semestre"]
+        sede, grupo = contexto["sede"], contexto["grupo"]
+        horarios = list(horarios_del_contexto(**contexto))
 
     asignaturas_semestre = []
     if filtros_completos:
@@ -454,9 +209,7 @@ def planificacion(request):
         "filtros_completos": filtros_completos,
         "hay_horarios": bool(horarios),
         # Calendario
-        "dias_calendario": dias_calendario,
-        "horas_calendario": horas_calendario,
-        "altura_calendario": altura_calendario,
+        "semana_referencia": SEMANA_REFERENCIA.isoformat(),
     }
 
     return render(
@@ -1652,3 +1405,68 @@ def exportar_excel(request):
     workbook.save(response)
 
     return response
+
+
+@require_GET
+def eventos_calendario(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.view_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para consultar horarios."]}}, status=403)
+    try:
+        contexto = resolver_contexto_calendario(request.GET)
+    except ValidationError as error:
+        return JsonResponse({"errors": error.message_dict}, status=400)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["El contexto académico no existe o no es válido."]}}, status=404)
+    return JsonResponse([serializar_evento(h) for h in horarios_del_contexto(**contexto)], safe=False)
+
+
+@require_POST
+def mover_horario(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.change_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para modificar horarios."]}}, status=403)
+    try:
+        datos = json.loads(request.body)
+        if not isinstance(datos, dict):
+            raise ValueError
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"errors": {"__all__": ["Envíe un objeto JSON válido."]}}, status=400)
+    form = MoverHorarioForm(datos)
+    if not form.is_valid():
+        return JsonResponse({"errors": dict(form.errors)}, status=400)
+    try:
+        with transaction.atomic():
+            horario = Horario.objects.select_for_update(of=("self",)).select_related(
+                "oferta__profesor", "oferta__periodo", "oferta__asignatura", "aula__sede", "oferta__modalidad",
+            ).prefetch_related("oferta__grupos__programa").get(
+                pk=form.cleaned_data["horario_id"], activo=True, oferta__activo=True,
+            )
+            # Serializar movimientos que comparten recursos dentro de este endpoint.
+            list(Profesor.objects.select_for_update().filter(pk=horario.oferta.profesor_id))
+            list(Aula.objects.select_for_update().filter(pk=horario.aula_id))
+            list(Grupo.objects.select_for_update().filter(ofertas_academicas=horario.oferta).order_by("pk"))
+            original = datos.get("original")
+            if original is not None and original != {
+                "dia": horario.dia, "hora_inicio": horario.hora_inicio.isoformat(), "hora_fin": horario.hora_fin.isoformat(),
+            }:
+                return JsonResponse({"errors": {"__all__": ["El horario cambió en otra sesión. Actualice el calendario."]}}, status=409)
+            fecha = date(2000, 1, 1)
+            duracion = datetime.combine(fecha, horario.hora_fin) - datetime.combine(fecha, horario.hora_inicio)
+            nueva_duracion = datetime.combine(fecha, form.cleaned_data["hora_fin"]) - datetime.combine(fecha, form.cleaned_data["hora_inicio"])
+            if nueva_duracion != duracion:
+                raise ValidationError({"hora_fin": "Mover un horario debe conservar su duración."})
+            horario.dia = form.cleaned_data["dia"]
+            horario.hora_inicio = form.cleaned_data["hora_inicio"]
+            horario.hora_fin = form.cleaned_data["hora_fin"]
+            horario.full_clean()
+            horario.save(update_fields=["dia", "hora_inicio", "hora_fin"])
+            evento = serializar_evento(horario)
+    except Horario.DoesNotExist:
+        return JsonResponse({"errors": {"__all__": ["El horario no existe o está inactivo."]}}, status=404)
+    except ValidationError as error:
+        errores = error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}
+        return JsonResponse({"errors": errores}, status=400)
+    return JsonResponse({"ok": True, "event": evento})

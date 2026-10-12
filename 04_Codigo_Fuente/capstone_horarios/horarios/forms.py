@@ -589,3 +589,10 @@ class NuevaAsignacionForm(forms.Form):
             )
 
         return cleaned_data
+
+
+class MoverHorarioForm(forms.Form):
+    horario_id = forms.IntegerField(min_value=1)
+    dia = forms.ChoiceField(choices=Horario.DIAS)
+    hora_inicio = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
+    hora_fin = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
