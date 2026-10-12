@@ -1,6 +1,7 @@
 from datetime import date, time
+from decimal import Decimal, ROUND_CEILING
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from academico.models import (
@@ -21,6 +22,8 @@ from academico.models import (
     Semestre,
 )
 
+from horarios.services import calcular_horas_planificadas
+
 from horarios.models import (
     Grupo,
     Horario,
@@ -33,8 +36,17 @@ class Command(BaseCommand):
 
     help = "Carga datos ficticios para probar el sistema " "de planificación docente."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--solo-docencia", action="store_true",
+            help="Reconcilia exclusivamente carga y disponibilidad ficticias de los seis docentes demo en 01-2026. No modifica catálogos ni horarios.",
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
+
+        if options["solo_docencia"]:
+            return self.cargar_condiciones_docentes()
 
         self.stdout.write(self.style.WARNING("Iniciando carga de datos ficticios..."))
 
@@ -1159,3 +1171,79 @@ class Command(BaseCommand):
         self.stdout.write(f"Ofertas Académicas: " f"{OfertaAcademica.objects.count()}")
 
         self.stdout.write(f"Horarios: " f"{Horario.objects.count()}")
+
+
+    def cargar_condiciones_docentes(self):
+        """Estado demo determinista para los horarios actuales, sin tocar entidades académicas.
+
+        Solo esta opción explícita normaliza las condiciones docentes. La carga
+        completa conserva las condiciones previamente editadas, como antes.
+        """
+        datos = [
+            ("DOC-DEMO-001", "Laura Méndez", Decimal("12")),
+            ("DOC-DEMO-002", "Diego Herrera", Decimal("10")),
+            ("DOC-DEMO-003", "Camila Rojas", Decimal("12")),
+            ("DOC-DEMO-004", "Sofía Navarro", Decimal("8")),
+            ("DOC-DEMO-005", "Andrés Salazar", Decimal("10")),
+            ("DOC-DEMO-006", "Felipe Campos", Decimal("12")),
+        ]
+        try:
+            periodo = PeriodoAcademico.objects.get(codigo="01-2026")
+        except PeriodoAcademico.DoesNotExist as error:
+            raise CommandError("No existe el periodo 01-2026. No se cargaron condiciones.") from error
+        profesores = {p.identificacion: p for p in Profesor.objects.select_for_update().filter(
+            identificacion__in=[codigo for codigo, _, _ in datos]
+        )}
+        # Comprobar el alcance antes de escribir. No crear ni renombrar docentes.
+        for codigo, nombre, _ in datos:
+            profesor = profesores.get(codigo)
+            if profesor is None or str(profesor) != nombre:
+                raise CommandError(f"El docente demo {codigo} no existe o no coincide con el nombre ficticio esperado.")
+        self.stdout.write(self.style.WARNING(
+            "Condiciones exclusivamente FICTICIAS/DEMO; no representan contratos ni disponibilidad real."
+        ))
+        for codigo, _, base in datos:
+            profesor = profesores[codigo]
+            horas = calcular_horas_planificadas(profesor, periodo)
+            # Aumentar la cifra ficticia si los horarios actuales lo necesitan.
+            asignadas = max(base, (horas / Decimal("4")).to_integral_value(rounding=ROUND_CEILING) * 4)
+            existentes = CargaDocente.objects.select_for_update().filter(profesor=profesor, periodo=periodo)
+            carga = existentes.filter(activo=True).first() or existentes.order_by("pk").first()
+            if carga is None:
+                carga = CargaDocente(profesor=profesor, periodo=periodo)
+            carga.horas_asignadas = asignadas
+            carga.activo = True
+            carga.full_clean()
+            carga.save()
+
+            # Un bloque amplio por día cubre todas las clases, incluidas las
+            # inactivas registradas, y deja margen ficticio adicional de una hora.
+            por_dia = {}
+            horarios = Horario.objects.filter(oferta__profesor=profesor, oferta__periodo=periodo)
+            for horario in horarios:
+                inicio, fin = por_dia.get(horario.dia, (horario.hora_inicio, horario.hora_fin))
+                por_dia[horario.dia] = (min(inicio, horario.hora_inicio), max(fin, horario.hora_fin))
+            if not por_dia:
+                por_dia["LU"] = (time(9), time(11))
+            deseados = []
+            for dia, (inicio, fin) in por_dia.items():
+                desde = time(max(0, inicio.hour - 1))
+                hora_hasta = fin.hour + (1 if fin.minute or fin.second or fin.microsecond else 0) + 1
+                hasta = time(hora_hasta) if hora_hasta < 24 else time.max
+                deseados.append((dia, desde, hasta))
+            bloques = DisponibilidadProfesor.objects.select_for_update().filter(profesor=profesor, periodo=periodo)
+            list(bloques)
+            # Desactivar rangos reemplazados; conservarlos como registros inactivos.
+            # En una segunda ejecución el conjunto activo será exactamente el mismo.
+            conservar = [b.pk for b in bloques if (b.dia, b.hora_inicio, b.hora_fin) in deseados]
+            bloques.exclude(pk__in=conservar).update(activo=False)
+            for dia, inicio, fin in deseados:
+                bloque = bloques.filter(dia=dia, hora_inicio=inicio, hora_fin=fin).first()
+                if bloque is None:
+                    bloque = DisponibilidadProfesor(profesor=profesor, periodo=periodo,
+                        dia=dia, hora_inicio=inicio, hora_fin=fin)
+                bloque.activo = True
+                bloque.full_clean()
+                bloque.save()
+            self.stdout.write(f"{profesor}: {asignadas} h ficticias; {len(deseados)} bloque(s) activo(s).")
+        self.stdout.write(self.style.SUCCESS("Condiciones docentes demo reconciliadas sin modificar horarios."))
