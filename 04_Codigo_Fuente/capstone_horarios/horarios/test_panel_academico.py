@@ -38,7 +38,8 @@ class PanelAcademicoTests(TestCase):
         g = self.grupo
         return self.client.get(reverse("planificacion"), {
             "centro": g.centro_tutorial_id, "facultad": g.programa.facultad_id,
-            "programa": g.programa_id, "periodo": g.periodo_id, "semestre": g.semestre_id,
+            "programa": g.programa_id, "periodo": g.periodo_id, "semestre": g.semestre_id, "modalidad": Modalidad.objects.get(codigo="PRE").pk,
+            "sede": Sede.objects.get(codigo="SEDE-ACA").pk,
         })
 
     def test_renderizado_completo_con_profesor(self):

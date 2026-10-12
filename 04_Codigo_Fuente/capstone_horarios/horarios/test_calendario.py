@@ -24,7 +24,7 @@ class CalendarioTests(TestCase):
         )
         cls.horario = Horario.objects.select_related("oferta__profesor", "oferta__asignatura", "aula").get(oferta__asignatura__codigo="PROGWEB01")
         cls.filtros = {"centro": str(cls.grupo.centro_tutorial_id), "facultad": str(cls.grupo.programa.facultad_id),
-            "programa": str(cls.grupo.programa_id), "periodo": str(cls.grupo.periodo_id), "semestre": str(cls.grupo.semestre_id)}
+            "programa": str(cls.grupo.programa_id), "periodo": str(cls.grupo.periodo_id), "semestre": str(cls.grupo.semestre_id), "modalidad": str(cls.horario.oferta.modalidad_id), "sede": str(cls.horario.aula.sede_id)}
 
     def setUp(self):
         self.client.force_login(self.usuario)
@@ -51,7 +51,8 @@ class CalendarioTests(TestCase):
         response = self.client.get(reverse("eventos_calendario"), dict(self.filtros, grupo=self.grupo.pk))
         self.assertEqual(response.status_code, 200)
         ids = {int(e["id"]) for e in response.json()}
-        esperados = set(Horario.objects.filter(oferta__grupos=self.grupo).values_list("pk", flat=True))
+        esperados = set(Horario.objects.filter(oferta__grupos__programa=self.grupo.programa, oferta__grupos__semestre=self.grupo.semestre,
+            oferta__modalidad_id=self.filtros["modalidad"], aula__sede_id=self.filtros["sede"]).values_list("pk", flat=True))
         self.assertEqual(ids, esperados)
         self.assertEqual(len(response.json()), len(ids))
 
@@ -162,7 +163,7 @@ class CalendarioTests(TestCase):
         self.assertEqual(self.client.get(reverse("eventos_calendario")).status_code, 400)
         self.assertEqual(self.client.get(reverse("eventos_calendario"), dict(self.filtros, semestre="x")).status_code, 400)
         otro_grupo = Grupo.objects.get(programa__codigo="ADM-EMP", semestre__numero=1)
-        self.assertEqual(self.client.get(reverse("eventos_calendario"), dict(self.filtros, grupo=otro_grupo.pk)).status_code, 404)
+        self.assertEqual(self.client.get(reverse("eventos_calendario"), dict(self.filtros, programa=otro_grupo.programa_id)).status_code, 404)
 
     def test_inactivos_no_se_devuelven(self):
         self.horario.activo = False
@@ -173,7 +174,7 @@ class CalendarioTests(TestCase):
 
     def test_transversal_es_un_evento_y_consultas_constantes(self):
         grupo = Grupo.objects.get(programa__codigo="ING-INF", semestre__numero=1)
-        contexto = resolver_contexto_calendario(dict(self.filtros, semestre=str(grupo.semestre_id)))
+        contexto = resolver_contexto_calendario(dict(self.filtros, semestre=str(grupo.semestre_id), sede=str(Sede.objects.get(codigo="SEDE-NORTE").pk)))
         with CaptureQueriesContext(connection) as consultas:
             eventos = [serializar_evento(h) for h in horarios_del_contexto(**contexto)]
         self.assertEqual(len(consultas), 2)

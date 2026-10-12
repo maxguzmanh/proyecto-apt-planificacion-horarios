@@ -76,7 +76,7 @@ def obtener_resumen_docente(profesores, periodo):
     return resumen
 
 
-def obtener_panel_academico(programa, semestre, centro, periodo, *, sede=None, grupo=None):
+def obtener_panel_academico(programa, semestre, centro, periodo, *, sede=None, grupo=None, modalidad=None):
     """Obtiene ofertas incluso sin horario; los totales docentes son globales al periodo."""
     planes = list(PlanEstudioAsignatura.objects.filter(
         programa=programa, semestre=semestre, activo=True, asignatura__activo=True,
@@ -92,7 +92,11 @@ def obtener_panel_academico(programa, semestre, centro, periodo, *, sede=None, g
         activo=True, periodo=periodo, asignatura_id__in=[p.asignatura_id for p in planes],
         grupos__in=grupos,
     )
-    if sede:
+    if modalidad:
+        ofertas = ofertas.filter(modalidad=modalidad)
+    # La oferta no pertenece a una sede: se elige el aula al crear cada Horario.
+    # Conservar ofertas sin horario para permitir planificar en la sede elegida.
+    if sede and modalidad is None:
         ofertas = ofertas.filter(horarios__activo=True, horarios__aula__sede=sede)
     ofertas = list(ofertas.select_related("profesor", "modalidad").prefetch_related(
         Prefetch("grupos", queryset=grupos, to_attr="grupos_contexto"),

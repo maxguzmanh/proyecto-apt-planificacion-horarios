@@ -596,3 +596,11 @@ class MoverHorarioForm(forms.Form):
     dia = forms.ChoiceField(choices=Horario.DIAS)
     hora_inicio = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
     hora_fin = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
+
+
+class CrearHorarioOfertaForm(forms.Form):
+    oferta_id = forms.IntegerField(min_value=1)
+    aula_id = forms.IntegerField(min_value=1)
+    dia = forms.ChoiceField(choices=Horario.DIAS)
+    hora_inicio = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
+    hora_fin = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])

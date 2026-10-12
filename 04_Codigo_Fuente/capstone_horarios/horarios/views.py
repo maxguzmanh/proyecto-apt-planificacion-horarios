@@ -30,9 +30,10 @@ from academico.models import (
     Semestre,
 )
 
-from .services import obtener_panel_academico
-from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm
-from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento
+from .services import (obtener_panel_academico, obtener_resumen_docente,
+    calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes)
+from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm
+from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
 from .models import (
     Grupo,
     Horario,
@@ -133,12 +134,12 @@ def planificacion(request):
     programa_id = request.GET.get("programa", "").strip()
     periodo_id = request.GET.get("periodo", "").strip()
     semestre_id = request.GET.get("semestre", "").strip()
-    grupo_id = request.GET.get("grupo", "").strip()
+    modalidad_id = request.GET.get("modalidad", "").strip()
 
     # ======================================================
     # FILTROS OBLIGATORIOS
     #
-    # Sede y Grupo son opcionales.
+    # Modalidad y Sede forman parte del contexto obligatorio.
     # ======================================================
 
     filtros_completos = all(
@@ -146,6 +147,8 @@ def planificacion(request):
             centro_id,
             facultad_id,
             programa_id,
+            modalidad_id,
+            sede_id,
             periodo_id,
             semestre_id,
         ]
@@ -161,7 +164,7 @@ def planificacion(request):
     programa = None
     periodo = None
     semestre = None
-    grupo = None
+    modalidad = None
 
     horarios = []
 
@@ -176,13 +179,13 @@ def planificacion(request):
             raise Http404("Filtros de planificación inválidos.") from error
         centro, facultad, programa = contexto["centro"], contexto["facultad"], contexto["programa"]
         periodo, semestre = contexto["periodo"], contexto["semestre"]
-        sede, grupo = contexto["sede"], contexto["grupo"]
+        sede, modalidad = contexto["sede"], contexto["modalidad"]
         horarios = list(horarios_del_contexto(**contexto))
 
     asignaturas_semestre = []
     if filtros_completos:
         asignaturas_semestre = obtener_panel_academico(
-            programa, semestre, centro, periodo, sede=sede, grupo=grupo,
+            programa, semestre, centro, periodo, sede=sede, modalidad=modalidad,
         )
 
     context = {
@@ -196,7 +199,7 @@ def planificacion(request):
         "programa": programa,
         "periodo": periodo,
         "semestre": semestre,
-        "grupo": grupo,
+        "modalidad": modalidad,
         # IDs seleccionados
         "centro_id": centro_id,
         "sede_id": sede_id,
@@ -204,7 +207,7 @@ def planificacion(request):
         "programa_id": programa_id,
         "periodo_id": periodo_id,
         "semestre_id": semestre_id,
-        "grupo_id": grupo_id,
+        "modalidad_id": modalidad_id,
         # Estado
         "filtros_completos": filtros_completos,
         "hay_horarios": bool(horarios),
@@ -227,19 +230,21 @@ def planificacion(request):
 @login_required
 def cargar_sedes(request):
     centro_id = request.GET.get("centro")
+    if not centro_id or not centro_id.isdigit():
+        return JsonResponse([], safe=False)
+    sedes = Sede.objects.filter(centro_tutorial_id=centro_id, centro_tutorial__activo=True,
+        activo=True).order_by("nombre").values("id", "nombre")
+    return JsonResponse(list(sedes), safe=False)
 
-    sedes = Sede.objects.filter(
-        centro_tutorial_id=centro_id,
-        activo=True,
-    ).values(
-        "id",
-        "nombre",
-    )
 
-    return JsonResponse(
-        list(sedes),
-        safe=False,
-    )
+@login_required
+def cargar_modalidades(request):
+    centro_id, programa_id = request.GET.get("centro", ""), request.GET.get("programa", "")
+    if not centro_id.isdigit() or not programa_id.isdigit():
+        return JsonResponse([], safe=False)
+    ofertas = ofertas_de_programa(centro_id, programa_id)
+    modalidades = Modalidad.objects.filter(activo=True, pk__in=ofertas.values("modalidad_id")).order_by("nombre").values("id", "nombre")
+    return JsonResponse(list(modalidades), safe=False)
 
 
 @login_required
@@ -346,79 +351,33 @@ def cargar_programas(request):
     )
 
 
+def ofertas_para_selects(request):
+    valores = {campo: request.GET.get(campo, "") for campo in ["centro", "programa", "modalidad", "sede"]}
+    if not all(valor.isdigit() and int(valor) > 0 for valor in valores.values()):
+        return OfertaAcademica.objects.none()
+    if not Sede.objects.filter(pk=valores["sede"], centro_tutorial_id=valores["centro"], activo=True).exists():
+        return OfertaAcademica.objects.none()
+    return ofertas_de_programa(valores["centro"], valores["programa"]).filter(modalidad_id=valores["modalidad"])
+
+
 @login_required
 def cargar_periodos(request):
-
-    centro_id = request.GET.get("centro")
-    programa_id = request.GET.get("programa")
-
-    periodos = PeriodoAcademico.objects.filter(
-        activo=True,
-    )
-
-    if centro_id and programa_id:
-
-        periodos = periodos.filter(
-            grupos__centro_tutorial_id=centro_id,
-            grupos__programa_id=programa_id,
-            grupos__activo=True,
-        )
-
-    periodos = (
-        periodos.distinct()
-        .order_by("-codigo")
-        .values(
-            "id",
-            "nombre",
-        )
-    )
-
-    return JsonResponse(
-        list(periodos),
-        safe=False,
-    )
+    ofertas = ofertas_para_selects(request)
+    periodos = PeriodoAcademico.objects.filter(activo=True, pk__in=ofertas.values("periodo_id")).order_by("-codigo").values("id", "nombre")
+    return JsonResponse(list(periodos), safe=False)
 
 
 @login_required
 def cargar_semestres(request):
-
-    centro_id = request.GET.get("centro")
-    programa_id = request.GET.get("programa")
-    periodo_id = request.GET.get("periodo")
-
-    semestres = Semestre.objects.all()
-
-    if centro_id and programa_id and periodo_id:
-
-        semestres = semestres.filter(
-            grupos__centro_tutorial_id=centro_id,
-            grupos__programa_id=programa_id,
-            grupos__periodo_id=periodo_id,
-            grupos__activo=True,
-        )
-
-    elif programa_id:
-
-        semestres = semestres.filter(
-            planes_estudio__programa_id=programa_id,
-            planes_estudio__activo=True,
-        )
-
-    semestres = semestres.distinct().order_by("numero")
-
-    datos = [
-        {
-            "id": semestre.id,
-            "numero": semestre.numero,
-            "nombre": semestre.get_numero_display(),
-        }
-        for semestre in semestres
-    ]
-
-    return JsonResponse(
-        datos,
-        safe=False,
-    )
+    periodo_id = request.GET.get("periodo", "")
+    ofertas = ofertas_para_selects(request)
+    if not periodo_id.isdigit() or not ofertas.filter(periodo_id=periodo_id).exists():
+        return JsonResponse([], safe=False)
+    semestres = Semestre.objects.filter(
+        grupos__centro_tutorial_id=request.GET["centro"], grupos__programa_id=request.GET["programa"],
+        grupos__periodo_id=periodo_id, grupos__activo=True,
+    ).distinct().order_by("numero")
+    return JsonResponse([{"id": s.pk, "numero": s.numero, "nombre": s.get_numero_display()} for s in semestres], safe=False)
 
 
 @login_required
@@ -1470,3 +1429,73 @@ def mover_horario(request):
         errores = error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}
         return JsonResponse({"errors": errores}, status=400)
     return JsonResponse({"ok": True, "event": evento})
+
+
+@require_GET
+def detalle_oferta_calendario(request, oferta_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.view_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para consultar horarios."]}}, status=403)
+    try:
+        contexto = resolver_contexto_calendario(request.GET)
+        oferta = oferta_del_contexto(oferta_id, contexto)
+    except ValidationError as error:
+        return JsonResponse({"errors": error.message_dict}, status=400)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["Oferta no disponible para el contexto seleccionado."]}}, status=404)
+    resumen = obtener_resumen_docente([oferta.profesor_id], oferta.periodo)
+    carga = obtener_carga_activa(oferta.profesor_id, oferta.periodo, resumen=resumen)
+    pendientes = calcular_horas_pendientes(oferta.profesor_id, oferta.periodo, resumen=resumen)
+    return JsonResponse({
+        "oferta_id": oferta.pk, "asignatura": oferta.asignatura.nombre,
+        "codigo_asignatura": oferta.asignatura.codigo, "profesor": str(oferta.profesor),
+        "grupos": [{"id": g.pk, "codigo": g.codigo, "programa": g.programa.nombre} for g in oferta.grupos.all()],
+        "modalidad": oferta.modalidad.nombre,
+        "horas_asignadas": str(carga.horas_asignadas) if carga else None,
+        "horas_planificadas": str(calcular_horas_planificadas(oferta.profesor_id, oferta.periodo, resumen=resumen)),
+        "horas_pendientes": str(pendientes) if pendientes is not None else None,
+        "disponibilidad": [{"dia": b.dia, "nombre_dia": b.get_dia_display(),
+            "hora_inicio": b.hora_inicio.isoformat(), "hora_fin": b.hora_fin.isoformat()}
+            for b in resumen[oferta.profesor_id]["disponibilidad"]],
+        "aulas": [{"id": a.pk, "nombre": a.nombre, "sede": a.sede.nombre, "tipo": a.tipo, "capacidad": a.capacidad}
+                  for a in aulas_del_contexto(contexto)],
+    })
+
+
+@require_POST
+def crear_horario_oferta(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.add_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para crear horarios."]}}, status=403)
+    try:
+        datos = json.loads(request.body)
+        if not isinstance(datos, dict):
+            raise ValueError
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"errors": {"__all__": ["Envíe un objeto JSON válido."]}}, status=400)
+    form = CrearHorarioOfertaForm(datos)
+    if not form.is_valid():
+        return JsonResponse({"errors": dict(form.errors)}, status=400)
+    try:
+        with transaction.atomic():
+            contexto = resolver_contexto_calendario(request.GET)
+            oferta = oferta_del_contexto(form.cleaned_data["oferta_id"], contexto, bloquear=True)
+            aula = get_object_or_404(aulas_del_contexto(contexto), pk=form.cleaned_data["aula_id"])
+            # Usar el mismo orden de bloqueos que el endpoint de movimiento.
+            list(Profesor.objects.select_for_update().filter(pk=oferta.profesor_id))
+            list(Aula.objects.select_for_update().filter(pk=aula.pk))
+            list(Grupo.objects.select_for_update().filter(ofertas_academicas=oferta).order_by("pk"))
+            horario = Horario(oferta=oferta, aula=aula, dia=form.cleaned_data["dia"],
+                hora_inicio=form.cleaned_data["hora_inicio"], hora_fin=form.cleaned_data["hora_fin"])
+            horario.full_clean()
+            horario.save()
+            evento = serializar_evento(horario)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["La oferta o el aula no existe, está inactiva o no pertenece al contexto seleccionado."]}}, status=404)
+    except ValidationError as error:
+        errores = error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}
+        return JsonResponse({"errors": errores}, status=400)
+    return JsonResponse({"ok": True, "horario_id": horario.pk, "event": evento,
+        "message": "Horario creado correctamente."}, status=201)

@@ -19,7 +19,10 @@
               data-selected-centro="{{ centro_id }}" data-selected-sede="{{ sede_id }}"
               data-selected-facultad="{{ facultad_id }}" data-selected-programa="{{ programa_id }}"
               data-selected-periodo="{{ periodo_id }}" data-selected-semestre="{{ semestre_id }}"
-              data-selected-grupo="{{ grupo_id }}">
+              data-selected-modalidad="{{ modalidad_id }}"
+              data-url-facultades="{% url 'cargar_facultades' %}" data-url-programas="{% url 'cargar_programas' %}"
+              data-url-modalidades="{% url 'cargar_modalidades' %}" data-url-sedes="{% url 'cargar_sedes' %}"
+              data-url-periodos="{% url 'cargar_periodos' %}" data-url-semestres="{% url 'cargar_semestres' %}">
             <div class="planning-horizontal-filters">
                 <div class="enterprise-field">
                     <label for="centro">Centro Tutorial</label>
@@ -37,20 +40,20 @@
                     <select id="programa" name="programa" class="form-select" required disabled><option value="">Seleccione un programa...</option></select>
                 </div>
                 <div class="enterprise-field">
+                    <label for="modalidad">Modalidad</label>
+                    <select id="modalidad" name="modalidad" class="form-select" required disabled><option value="">Seleccione una modalidad...</option></select>
+                </div>
+                <div class="enterprise-field">
+                    <label for="sede">Sede</label>
+                    <select id="sede" name="sede" class="form-select" required disabled><option value="">Seleccione una sede...</option></select>
+                </div>
+                <div class="enterprise-field">
                     <label for="periodo">Periodo Académico</label>
                     <select id="periodo" name="periodo" class="form-select" required disabled><option value="">Seleccione un periodo...</option></select>
                 </div>
-                <div class="enterprise-field">
-                    <label for="sede">Sede <span class="text-secondary fw-normal">(opcional)</span></label>
-                    <select id="sede" name="sede" class="form-select" disabled><option value="">Todas las sedes</option></select>
-                </div>
-                <div class="enterprise-field">
-                    <label for="grupo">Grupo <span class="text-secondary fw-normal">(opcional)</span></label>
-                    <select id="grupo" name="grupo" class="form-select" disabled><option value="">Todos los grupos</option></select>
-                </div>
             </div>
             <div class="planning-actions">
-                <div class="form-help">Seleccione el semestre en el panel académico. Sede y Grupo permiten acotar la consulta.</div>
+                <div class="form-help">Complete los seis filtros del contexto y seleccione el semestre en el panel académico.</div>
                 <div class="d-flex gap-2">
                     <a href="{% url 'planificacion' %}" class="btn btn-outline-secondary">Limpiar filtros</a>
                     <button type="submit" class="btn-enterprise-primary">Aplicar filtros</button>
@@ -93,7 +96,20 @@
                                 <div class="subject-professor">{{ docente.profesor }}</div>
                                 <div class="subject-offers">
                                     {% for oferta in docente.ofertas %}
-                                    <p class="small text-secondary mb-1">{{ oferta.modalidad.nombre }} · {% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                                    <div class="subject-offer-option{% if perms.horarios.add_horario and oferta.profesor.activo %} offer-drag-card{% endif %}"
+                                        data-offer-id="{{ oferta.pk }}"
+                                        {% if perms.horarios.add_horario and oferta.profesor.activo %}
+                                        tabindex="0" role="group" aria-label="Oferta de {{ item.plan.asignatura.nombre }} con {{ docente.profesor }}. Tarjeta arrastrable."
+                                        data-oferta-id="{{ oferta.pk }}" data-asignatura="{{ item.plan.asignatura.nombre }}"
+                                        data-profesor="{{ docente.profesor }}" data-modalidad="{{ oferta.modalidad.nombre }}"
+                                        data-grupos="{% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}"
+                                        {% endif %}>
+                                        <div class="small fw-semibold">{{ docente.profesor }}</div>
+                                        <p class="small text-secondary mb-2">{{ oferta.modalidad.nombre }} · {% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                                        {% if perms.horarios.add_horario and oferta.profesor.activo %}
+                                        <span class="offer-drag-hint">⠿ Arrastre esta tarjeta al calendario</span>
+                                        {% elif not oferta.profesor.activo %}<span class="subject-missing-data">Oferta no disponible</span>{% endif %}
+                                    </div>
                                     {% endfor %}
                                 </div>
                                 <p class="subject-hours-caption">Horas semanales del profesor en el periodo</p>
@@ -135,8 +151,8 @@
 
         <div class="alert alert-warning">
 
-            Seleccione Centro Tutorial, Facultad,
-            Programa Académico, Periodo y Semestre
+            Seleccione Centro Tutorial, Facultad, Programa Académico,
+            Modalidad, Sede, Periodo y Semestre
             para visualizar la planificación.
 
         </div>
@@ -177,26 +193,7 @@
                             · Semestre
                             {{ semestre.get_numero_display }}
 
-                            {% if sede %}
-
-                                · {{ sede.nombre }}
-
-                            {% else %}
-
-                                · Todas las sedes
-
-                            {% endif %}
-
-
-                            {% if grupo %}
-
-                                · Grupo {{ grupo.codigo }}
-
-                            {% else %}
-
-                                · Todos los grupos
-
-                            {% endif %}
+                            · {{ modalidad.nombre }} · {{ sede.nombre }} · {{ periodo.nombre }}
 
                         </small>
 
@@ -287,6 +284,9 @@
                     <div id="uniplan-calendar"
                          data-events-url="{% url 'eventos_calendario' %}"
                          data-move-url="{% url 'mover_horario' %}"
+                         data-create-url="{% url 'crear_horario_oferta' %}"
+                         data-offer-base="{% url 'detalle_oferta_calendario' 0 %}"
+                         data-can-create="{{ perms.horarios.add_horario|yesno:'true,false' }}"
                          data-filters="{{ request.GET.urlencode }}"
                          data-reference-week="{{ semana_referencia }}"
                          data-can-edit="{{ perms.horarios.change_horario|yesno:'true,false' }}"
@@ -301,6 +301,12 @@
         </section>
     </div>
 </div>
+{% if filtros_completos and perms.horarios.change_horario %}
+{% include "horarios/modal_mover_horario.html" %}
+{% endif %}
+{% if filtros_completos and perms.horarios.add_horario %}
+{% include "horarios/modal_crear_horario.html" %}
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'horarios/js/selects.js' %}"></script>
