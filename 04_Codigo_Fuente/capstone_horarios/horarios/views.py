@@ -26,6 +26,7 @@ from academico.models import (
     Semestre,
 )
 
+from .services import obtener_panel_academico
 from .forms import HorarioForm, NuevaAsignacionForm
 from .models import (
     Grupo,
@@ -425,18 +426,9 @@ def planificacion(request):
 
     asignaturas_semestre = []
     if filtros_completos:
-        planes = PlanEstudioAsignatura.objects.filter(
-            programa=programa, semestre=semestre, activo=True, asignatura__activo=True,
-        ).select_related("asignatura", "area_academica").order_by("asignatura__nombre")
-        profesores_por_asignatura = {}
-        for horario in horarios:
-            profesores_por_asignatura.setdefault(horario.oferta.asignatura_id, {})[
-                horario.oferta.profesor_id
-            ] = horario.oferta.profesor
-        asignaturas_semestre = [
-            {"plan": plan, "profesores": list(profesores_por_asignatura.get(plan.asignatura_id, {}).values())}
-            for plan in planes
-        ]
+        asignaturas_semestre = obtener_panel_academico(
+            programa, semestre, centro, periodo, sede=sede, grupo=grupo,
+        )
 
     context = {
         "asignaturas_semestre": asignaturas_semestre,

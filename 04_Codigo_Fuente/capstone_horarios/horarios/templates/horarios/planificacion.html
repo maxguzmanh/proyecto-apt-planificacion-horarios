@@ -76,15 +76,50 @@
                 <div class="academic-subject-list">
                     {% for item in asignaturas_semestre %}
                     <details class="academic-subject-card">
-                        <summary><span class="subject-code">{{ item.plan.asignatura.codigo }}</span><strong>{{ item.plan.asignatura.nombre }}</strong></summary>
+                        <summary>
+                            <strong>{{ item.plan.asignatura.nombre }}</strong>
+                            <span class="subject-code">{{ item.plan.asignatura.codigo }} · {{ item.plan.creditos }} créditos</span>
+                        </summary>
                         <div class="academic-subject-content">
-                            <div class="subject-metadata">{{ item.plan.creditos }} créditos{% if item.plan.area_academica %} · {{ item.plan.area_academica.nombre }}{% endif %}</div>
-                            <div class="subject-section-label">Profesores programados</div>
-                            {% for profesor in item.profesores %}<div class="subject-professor">{{ profesor }}</div>{% empty %}<p class="text-secondary small mb-0">Sin profesor programado en esta consulta.</p>{% endfor %}
-                            <div class="subject-availability-zone">
-                                <div class="subject-section-label">Profesores / horas disponibles</div>
-                                <p class="text-secondary small mb-0">Disponibilidad por consultar.</p>
-                            </div>
+                            <div class="subject-section-label">Área académica</div>
+                            <p class="subject-metadata">{{ item.plan.area_academica.nombre|default:"Área académica no registrada" }}</p>
+                            <div class="subject-section-label">Grupos del contexto</div>
+                            <div class="subject-tags">{% for grupo in item.grupos %}<span>{{ grupo.codigo }}</span>{% empty %}<span class="text-secondary">Sin grupos relacionados</span>{% endfor %}</div>
+                            <div class="subject-section-label mt-3">Modalidad</div>
+                            <p class="subject-metadata">{% for modalidad in item.modalidades %}{{ modalidad.nombre }}{% if not forloop.last %} · {% endif %}{% empty %}Modalidad no determinada{% endfor %}</p>
+                            {% for docente in item.profesores %}
+                            <section class="subject-teacher" aria-label="Información de {{ docente.profesor }}">
+                                <div class="subject-section-label">Profesor asignado</div>
+                                <div class="subject-professor">{{ docente.profesor }}</div>
+                                <div class="subject-offers">
+                                    {% for oferta in docente.ofertas %}
+                                    <p class="small text-secondary mb-1">{{ oferta.modalidad.nombre }} · {% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                                    {% endfor %}
+                                </div>
+                                <p class="subject-hours-caption">Horas semanales del profesor en el periodo</p>
+                                <dl class="subject-hours">
+                                    {% if docente.carga %}
+                                    <div><dt>Carga asignada</dt><dd>{{ docente.carga.horas_asignadas|floatformat:"2" }} h</dd></div>
+                                    {% else %}
+                                    <div class="subject-missing-data">Carga docente no registrada</div>
+                                    {% endif %}
+                                    <div><dt>Horas planificadas</dt><dd>{{ docente.horas_planificadas|floatformat:"2" }} h</dd></div>
+                                    {% if docente.horas_pendientes != None %}
+                                    <div {% if docente.horas_pendientes < 0 %}class="text-danger"{% endif %}><dt>Horas pendientes</dt><dd>{{ docente.horas_pendientes|floatformat:"2" }} h</dd></div>
+                                    {% else %}
+                                    <div><dt>Horas pendientes</dt><dd>Sin calcular</dd></div>
+                                    {% endif %}
+                                </dl>
+                                <div class="subject-availability-zone">
+                                    <div class="subject-section-label">Disponibilidad</div>
+                                    <ul class="subject-availability-list">
+                                        {% for bloque in docente.disponibilidad %}
+                                        <li>{{ bloque.get_dia_display }} <span>{{ bloque.hora_inicio|time:"H:i" }}–{{ bloque.hora_fin|time:"H:i" }}</span></li>
+                                        {% empty %}<li class="subject-missing-data">Disponibilidad no registrada</li>{% endfor %}
+                                    </ul>
+                                </div>
+                            </section>
+                            {% empty %}<p class="subject-missing-data mt-3 mb-0">Sin profesor asignado</p>{% endfor %}
                         </div>
                     </details>
                     {% empty %}
