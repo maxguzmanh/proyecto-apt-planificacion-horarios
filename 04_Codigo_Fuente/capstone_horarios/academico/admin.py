@@ -1,6 +1,8 @@
 from django.contrib import admin
 
 from .models import (
+    DisponibilidadProfesor,
+    CargaDocente,
     AreaAcademica,
     Asignatura,
     Aula,
@@ -368,3 +370,19 @@ class AulaAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
+
+
+@admin.register(DisponibilidadProfesor)
+class DisponibilidadProfesorAdmin(admin.ModelAdmin):
+    list_display = ("profesor", "periodo", "dia", "hora_inicio", "hora_fin", "activo")
+    list_filter = ("periodo", "dia", "activo")
+    search_fields = ("profesor__identificacion", "profesor__nombre", "profesor__apellido")
+    list_select_related = ("profesor", "periodo")
+
+
+@admin.register(CargaDocente)
+class CargaDocenteAdmin(admin.ModelAdmin):
+    list_display = ("profesor", "periodo", "horas_asignadas", "activo")
+    list_filter = ("periodo", "activo")
+    search_fields = ("profesor__identificacion", "profesor__nombre", "profesor__apellido")
+    list_select_related = ("profesor", "periodo")

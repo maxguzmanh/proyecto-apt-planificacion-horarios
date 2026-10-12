@@ -1,5 +1,10 @@
 from django.conf import settings
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+from decimal import Decimal
+
+from .choices import DiaSemana
 
 # ==========================================================
 # ESTRUCTURA TERRITORIAL
@@ -508,3 +513,101 @@ class Aula(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.sede.nombre}"
+
+
+class DisponibilidadProfesor(models.Model):
+    profesor = models.ForeignKey(
+        Profesor, on_delete=models.PROTECT, related_name="disponibilidades",
+    )
+    periodo = models.ForeignKey(
+        PeriodoAcademico, on_delete=models.PROTECT,
+        related_name="disponibilidades_profesores",
+    )
+    dia = models.CharField(max_length=2, choices=DiaSemana.choices)
+    hora_inicio = models.TimeField()
+    hora_fin = models.TimeField()
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Disponibilidad de Profesor"
+        verbose_name_plural = "Disponibilidad de Profesores"
+        ordering = ["profesor__apellido", "profesor__nombre", "periodo", "dia", "hora_inicio"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profesor", "periodo", "dia", "hora_inicio", "hora_fin"],
+                name="uq_disponibilidad_bloque",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(hora_fin__gt=models.F("hora_inicio")),
+                name="ck_disponibilidad_horas",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(dia__in=DiaSemana.values),
+                name="ck_disponibilidad_dia",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.hora_inicio and self.hora_fin and self.hora_fin <= self.hora_inicio:
+            raise ValidationError({"hora_fin": "La hora de término debe ser posterior a la hora de inicio."})
+        if not all([self.profesor_id, self.periodo_id, self.dia, self.hora_inicio, self.hora_fin]):
+            return
+        bloques = DisponibilidadProfesor.objects.filter(
+            profesor_id=self.profesor_id, periodo_id=self.periodo_id, dia=self.dia,
+        ).exclude(pk=self.pk)
+        if bloques.filter(hora_inicio=self.hora_inicio, hora_fin=self.hora_fin).exists():
+            raise ValidationError("Ya existe un bloque de disponibilidad exactamente igual.")
+        if self.activo and bloques.filter(
+            activo=True, hora_inicio__lt=self.hora_fin, hora_fin__gt=self.hora_inicio,
+        ).exists():
+            raise ValidationError("El bloque se superpone con otra disponibilidad activa del profesor.")
+
+    def __str__(self):
+        return (
+            f"{self.profesor} - {self.periodo} - {self.get_dia_display()} "
+            f"{self.hora_inicio:%H:%M} a {self.hora_fin:%H:%M}"
+        )
+
+
+class CargaDocente(models.Model):
+    profesor = models.ForeignKey(
+        Profesor, on_delete=models.PROTECT, related_name="cargas_docentes",
+    )
+    periodo = models.ForeignKey(
+        PeriodoAcademico, on_delete=models.PROTECT, related_name="cargas_docentes",
+    )
+    horas_asignadas = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Horas cronológicas semanales de 60 minutos.",
+    )
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Carga Docente"
+        verbose_name_plural = "Cargas Docentes"
+        ordering = ["profesor__apellido", "profesor__nombre", "periodo"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(horas_asignadas__gte=0),
+                name="ck_carga_docente_no_negativa",
+            ),
+            models.UniqueConstraint(
+                fields=["profesor", "periodo"], condition=models.Q(activo=True),
+                name="uq_carga_docente_activa",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.horas_asignadas is not None and self.horas_asignadas < 0:
+            raise ValidationError({"horas_asignadas": "La carga docente no puede ser negativa."})
+        if self.activo and self.profesor_id and self.periodo_id:
+            if CargaDocente.objects.filter(
+                profesor_id=self.profesor_id, periodo_id=self.periodo_id, activo=True,
+            ).exclude(pk=self.pk).exists():
+                raise ValidationError("Ya existe una carga docente activa para este profesor y periodo.")
+
+    def __str__(self):
+        return f"{self.profesor} - {self.periodo} - {self.horas_asignadas} horas semanales"

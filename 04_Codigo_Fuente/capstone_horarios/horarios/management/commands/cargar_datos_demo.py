@@ -4,6 +4,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from academico.models import (
+    DisponibilidadProfesor,
+    CargaDocente,
     AreaAcademica,
     Asignatura,
     Aula,
@@ -1112,6 +1114,21 @@ class Command(BaseCommand):
             time(9, 0),
             time(11, 0),
         )
+
+        # Condiciones ficticias: no reemplazar cargas ni disponibilidades existentes.
+        for profesor_demo in profesores.values():
+            if not CargaDocente.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
+                carga = CargaDocente(profesor=profesor_demo, periodo=periodo, horas_asignadas="12.00")
+                carga.full_clean()
+                carga.save()
+            if not DisponibilidadProfesor.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
+                for codigo_dia, _ in Horario.DIAS:
+                    bloque = DisponibilidadProfesor(
+                        profesor=profesor_demo, periodo=periodo, dia=codigo_dia,
+                        hora_inicio=time(8), hora_fin=time(20),
+                    )
+                    bloque.full_clean()
+                    bloque.save()
 
         # ==================================================
         # RESUMEN

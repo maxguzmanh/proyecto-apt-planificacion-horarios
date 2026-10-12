@@ -1,3 +1,5 @@
+from datetime import time
+
 from django.contrib import messages
 from django.contrib.auth.decorators import (
     login_required,
@@ -14,6 +16,8 @@ from django.shortcuts import (
 from horarios.models import Grupo
 
 from .forms import (
+    DisponibilidadProfesorForm,
+    CargaDocenteForm,
     AreaAcademicaForm,
     AsignaturaForm,
     AulaForm,
@@ -30,6 +34,8 @@ from .forms import (
 )
 
 from .models import (
+    DisponibilidadProfesor,
+    CargaDocente,
     AreaAcademica,
     Asignatura,
     Aula,
@@ -50,6 +56,36 @@ from .models import (
 
 
 MANTENEDORES = {
+    "disponibilidades": {
+        "modelo": DisponibilidadProfesor,
+        "form": DisponibilidadProfesorForm,
+        "titulo": "Disponibilidad de Profesores",
+        "singular": "Disponibilidad de Profesor",
+        "descripcion": "Administre los bloques semanales de disponibilidad por profesor y periodo.",
+        "columnas": [("Profesor", "profesor"), ("Periodo", "periodo"),
+                     ("Día", "get_dia_display"), ("Hora inicio", "hora_inicio"), ("Hora término", "hora_fin")],
+        "crear_url": "disponibilidad_crear", "editar_url": "disponibilidad_editar",
+        "eliminar_url": "disponibilidad_eliminar", "listado_url": "disponibilidades_profesores",
+        "perm_add": "academico.add_disponibilidadprofesor",
+        "perm_change": "academico.change_disponibilidadprofesor",
+        "perm_delete": "academico.delete_disponibilidadprofesor",
+        "mostrar_estado": True,
+        "queryset": lambda: DisponibilidadProfesor.objects.select_related("profesor", "periodo").all(),
+    },
+    "cargas_docentes": {
+        "modelo": CargaDocente,
+        "form": CargaDocenteForm,
+        "titulo": "Carga Docente",
+        "singular": "Carga Docente",
+        "descripcion": "Administre las horas cronológicas semanales asignadas por profesor y periodo.",
+        "columnas": [("Profesor", "profesor"), ("Periodo", "periodo"), ("Horas semanales", "horas_asignadas")],
+        "crear_url": "carga_docente_crear", "editar_url": "carga_docente_editar",
+        "eliminar_url": "carga_docente_eliminar", "listado_url": "cargas_docentes",
+        "perm_add": "academico.add_cargadocente", "perm_change": "academico.change_cargadocente",
+        "perm_delete": "academico.delete_cargadocente",
+        "mostrar_estado": True,
+        "queryset": lambda: CargaDocente.objects.select_related("profesor", "periodo").all(),
+    },
     # ======================================================
     # PROFESORES
     # ======================================================
@@ -596,6 +632,9 @@ def obtener_valor(
 
     if valor is None:
         return "—"
+
+    if isinstance(valor, time):
+        return valor.strftime("%H:%M")
 
     # Fechas
     if hasattr(
@@ -1819,3 +1858,51 @@ def grupo_eliminar(
         "grupos",
         grupo_id,
     )
+
+
+@login_required
+@permission_required("academico.view_disponibilidadprofesor", raise_exception=True)
+def disponibilidades_profesores(request):
+    return listado_generico(request, "disponibilidades")
+
+
+@login_required
+@permission_required("academico.add_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_crear(request):
+    return crear_generico(request, "disponibilidades")
+
+
+@login_required
+@permission_required("academico.change_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_editar(request, objeto_id):
+    return editar_generico(request, "disponibilidades", objeto_id)
+
+
+@login_required
+@permission_required("academico.delete_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_eliminar(request, objeto_id):
+    return eliminar_generico(request, "disponibilidades", objeto_id)
+
+
+@login_required
+@permission_required("academico.view_cargadocente", raise_exception=True)
+def cargas_docentes(request):
+    return listado_generico(request, "cargas_docentes")
+
+
+@login_required
+@permission_required("academico.add_cargadocente", raise_exception=True)
+def carga_docente_crear(request):
+    return crear_generico(request, "cargas_docentes")
+
+
+@login_required
+@permission_required("academico.change_cargadocente", raise_exception=True)
+def carga_docente_editar(request, objeto_id):
+    return editar_generico(request, "cargas_docentes", objeto_id)
+
+
+@login_required
+@permission_required("academico.delete_cargadocente", raise_exception=True)
+def carga_docente_eliminar(request, objeto_id):
+    return eliminar_generico(request, "cargas_docentes", objeto_id)

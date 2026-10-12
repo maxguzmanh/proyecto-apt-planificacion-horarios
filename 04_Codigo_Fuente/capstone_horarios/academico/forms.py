@@ -5,6 +5,8 @@ from django.db.models import Q
 from horarios.models import Grupo
 
 from .models import (
+    DisponibilidadProfesor,
+    CargaDocente,
     AreaAcademica,
     Asignatura,
     Aula,
@@ -982,3 +984,40 @@ class GrupoForm(forms.ModelForm):
                 )
 
         return cleaned_data
+
+
+class CondicionProfesorForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo, modelo in [("profesor", Profesor), ("periodo", PeriodoAcademico)]:
+            actual_id = getattr(self.instance, f"{campo}_id", None) if self.instance.pk else None
+            self.fields[campo].queryset = queryset_activos_con_actual(modelo, actual_id)
+        for field in self.fields.values():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs["class"] = "form-check-input"
+            elif isinstance(field.widget, forms.Select):
+                field.widget.attrs["class"] = "form-select"
+            else:
+                field.widget.attrs["class"] = "form-control"
+
+
+class DisponibilidadProfesorForm(CondicionProfesorForm):
+    class Meta:
+        model = DisponibilidadProfesor
+        fields = ["profesor", "periodo", "dia", "hora_inicio", "hora_fin", "activo"]
+        labels = {
+            "periodo": "Periodo Académico", "dia": "Día",
+            "hora_inicio": "Hora inicio", "hora_fin": "Hora término",
+        }
+        widgets = {
+            "hora_inicio": forms.TimeInput(format="%H:%M", attrs={"type": "time"}),
+            "hora_fin": forms.TimeInput(format="%H:%M", attrs={"type": "time"}),
+        }
+
+
+class CargaDocenteForm(CondicionProfesorForm):
+    class Meta:
+        model = CargaDocente
+        fields = ["profesor", "periodo", "horas_asignadas", "activo"]
+        labels = {"periodo": "Periodo Académico", "horas_asignadas": "Horas semanales asignadas"}
+        widgets = {"horas_asignadas": forms.NumberInput(attrs={"min": "0", "step": "0.01"})}

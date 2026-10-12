@@ -9,6 +9,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from academico.choices import DiaSemana
+
 from academico.models import (
     Asignatura,
     Aula,
@@ -294,15 +296,7 @@ def planificacion(request):
     # DÍAS
     # ======================================================
 
-    dias = [
-        ("LU", "Lunes"),
-        ("MA", "Martes"),
-        ("MI", "Miércoles"),
-        ("JU", "Jueves"),
-        ("VI", "Viernes"),
-        ("SA", "Sábado"),
-        ("DO", "Domingo"),
-    ]
+    dias = DiaSemana.choices
 
     # ======================================================
     # DIMENSIONES DEL CALENDARIO

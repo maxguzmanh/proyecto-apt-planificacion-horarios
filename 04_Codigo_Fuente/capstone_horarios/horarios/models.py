@@ -1,6 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from academico.choices import DiaSemana
+
 from academico.models import (
     Asignatura,
     Aula,
@@ -245,15 +247,7 @@ class OfertaGrupo(models.Model):
 
 class Horario(models.Model):
 
-    DIAS = [
-        ("LU", "Lunes"),
-        ("MA", "Martes"),
-        ("MI", "Miércoles"),
-        ("JU", "Jueves"),
-        ("VI", "Viernes"),
-        ("SA", "Sábado"),
-        ("DO", "Domingo"),
-    ]
+    DIAS = DiaSemana.choices
 
     oferta = models.ForeignKey(
         OfertaAcademica,
