@@ -27,27 +27,27 @@ class OcupacionesTests(DatosDocencia,TestCase):
         self.h=Horario.objects.create(oferta=self.externa,sede=self.sede,dia="LU",hora_inicio=time(8),hora_fin=time(9))
         self.url=reverse("ocupaciones_oferta",args=[self.oferta.pk])
     def get(self,**extras): return self.client.get(self.url,{**self.filtros,**extras})
-    def test_otra_sede(self): self.assertEqual(self.get().json()[0]["extendedProps"]["sede"],"Sede Externa")
-    def test_otro_programa(self): self.assertEqual(self.get().json()[0]["extendedProps"]["programas"],["Programa Externo"])
-    def test_otro_centro(self): self.assertEqual(self.get().json()[0]["extendedProps"]["centros"],["Centro Externo"])
+    def test_otra_sede(self): self.assertEqual(self.get().json()["ocupaciones"][0]["extendedProps"]["sede"],"Sede Externa")
+    def test_otro_programa(self): self.assertEqual(self.get().json()["ocupaciones"][0]["extendedProps"]["programas"],["Programa Externo"])
+    def test_otro_centro(self): self.assertEqual(self.get().json()["ocupaciones"][0]["extendedProps"]["centros"],["Centro Externo"])
     def test_serializacion(self):
-        p=self.get().json()[0]["extendedProps"]
+        p=self.get().json()["ocupaciones"][0]["extendedProps"]
         self.assertEqual(p["aula"],"Aula pendiente"); self.assertEqual(p["grupos"][0]["codigo"],"G-EXT")
         for key in ["facultades","modalidad","periodo","semestres","hora_inicio","hora_fin"]: self.assertTrue(p[key])
     def test_no_duplica_visible(self):
         Horario.objects.create(oferta=self.oferta,sede=self.aula.sede,dia="LU",hora_inicio=time(9),hora_fin=time(10))
-        self.assertEqual(len(self.get().json()),1)
+        self.assertEqual(len(self.get().json()["ocupaciones"]),1)
     def test_login(self): self.client.logout(); self.assertEqual(self.get().status_code,401)
     def test_permiso(self):
         u=get_user_model().objects.create_user(username="sin_permiso");self.client.force_login(u);self.assertEqual(self.get().status_code,403)
-    def test_profesor_desde_oferta(self): self.assertEqual(len(self.get(profesor_id=self.otro_profesor.pk).json()),1)
+    def test_profesor_desde_oferta(self): self.assertEqual(len(self.get(profesor_id=self.otro_profesor.pk).json()["ocupaciones"]),1)
     def test_solo_periodo_actual(self):
         self.condiciones(self.profesor,self.otro_periodo)
         o=self.nueva_oferta(self.profesor,self.otro_periodo)
         Horario.objects.create(oferta=o,sede=self.sede,dia="LU",hora_inicio=time(8),hora_fin=time(9))
-        self.assertEqual(len(self.get().json()),1)
+        self.assertEqual(len(self.get().json()["ocupaciones"]),1)
     def test_solo_activos(self):
-        self.h.activo=False;self.h.save();self.assertEqual(self.get().json(),[])
+        self.h.activo=False;self.h.save();self.assertEqual(self.get().json()["ocupaciones"],[])
     def test_json_conflicto_neutral_y_contexto(self):
         r=self.client.post(reverse("crear_horario_oferta")+"?"+urlencode(self.filtros),json.dumps({"oferta_id":self.oferta.pk,"dia":"LU","hora_inicio":"08:00","hora_fin":"09:00"}),content_type="application/json")
         self.assertEqual(r.status_code,400);data=r.json()
@@ -65,6 +65,6 @@ class OcupacionesTests(DatosDocencia,TestCase):
             eventos=[evento_con_contexto(h) for h in rows]
         self.assertEqual(len(eventos),1)
     def test_referencias_solo_lectura(self):
-        e=self.get().json()[0];self.assertFalse(e["editable"]);self.assertFalse(e["durationEditable"])
+        e=self.get().json()["ocupaciones"][0];self.assertFalse(e["editable"]);self.assertFalse(e["durationEditable"])
         self.assertTrue(e["extendedProps"]["ocupacion_externa"])
     def test_contexto_incompleto(self): self.assertEqual(self.client.get(self.url).status_code,400)

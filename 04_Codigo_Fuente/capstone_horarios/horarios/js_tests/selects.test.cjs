@@ -5,12 +5,13 @@ const path = require("node:path");
 const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../static/horarios/js/selects.js"), "utf8");
 const orden = ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
-function setup(restaurar = false) {
+function setup(restaurar = false, modalidadCodigo = "PRE", sedeCodigo = "SEDE-ACA") {
     const nodes = new Map();
     const calls = []; let submissions = 0;
     class Node {
         constructor() { this.value = ""; this.listeners = {}; this.disabled = false; this.children = []; }
         addEventListener(name, fn) { this.listeners[name] = fn; }
+        get options() { return this.children; }
         replaceChildren(...children) { this.children = children; this.value = ""; }
         appendChild(child) { this.children.push(child); }
         setAttribute() {}
@@ -31,11 +32,11 @@ function setup(restaurar = false) {
     const fetch = async url => {
         calls.push(url);
         const campo = url.split("?")[0].slice(1);
-        return { ok: true, json: async () => [{ id: orden.indexOf(campo) + 1, nombre: campo }] };
+        return { ok: true, json: async () => [{ id: orden.indexOf(campo) + 1, nombre: campo, codigo: campo === "modalidad" ? modalidadCodigo : campo === "sede" ? sedeCodigo : "" }] };
     };
     vm.runInNewContext(source, { document: { getElementById: id => nodes.get(id),
         querySelector: () => null, createElement: () => new Node(), addEventListener: (_name, fn) => fn() },
-        Option: class { constructor(text, value) { this.text = text; this.value = value; } }, URLSearchParams, fetch });
+        Option: class { constructor(text, value) { this.text = text; this.value = value; this.dataset = {}; } }, URLSearchParams, fetch });
     return { nodes, calls, form, submissions: () => submissions };
 }
 
@@ -82,3 +83,9 @@ test("contexto completo se aplica al seleccionar semestre", async () => { const 
 test("cambiar semestre vuelve a aplicar sin botón", async () => { const a=setup(true); await new Promise(r=>setImmediate(r)); a.nodes.get("semestre").value="8"; await a.nodes.get("semestre").listeners.change(); assert.equal(a.submissions(),1); });
 test("contexto incompleto no envía formulario", async () => { const a=setup(); a.nodes.get("centro").value="1"; await a.nodes.get("centro").listeners.change(); assert.equal(a.submissions(),0); });
 test("plantilla sin Aplicar filtros ni Nueva asignación y Excel accesible", () => { const html=fs.readFileSync(path.join(__dirname,"../templates/horarios/planificacion.html"),"utf8"); assert.ok(!html.includes("Aplicar filtros")); assert.ok(!html.includes("+ Nueva asignación")); assert.ok(html.includes("{% url 'exportar_excel' %}?{{ request.GET.urlencode }}")); assert.ok(html.includes('aria-label="Exportar planificación a Excel"')); assert.ok(html.includes("<svg")); });
+
+test("Virtual elige SEDE-VIR y carga automáticamente periodos", async()=>{const a=setup(true,"VIR","SEDE-VIR");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"5");assert.equal(a.nodes.get("periodo").disabled,false);assert.ok(a.calls.at(-1).startsWith("/periodo"));});
+test("Híbrida mantiene selección manual de sede",async()=>{const a=setup(true,"HIB");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"");assert.equal(a.nodes.get("periodo").disabled,true);});
+test("Virtual sin código estable no inventa Campus Virtual",async()=>{const a=setup(true,"VIR","OTRA");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"");assert.equal(a.nodes.get("periodo").disabled,true);});
+
+test("Presencial no muestra SEDE-VIR incluso ante respuesta incompatible",async()=>{const a=setup(true,"PRE","SEDE-VIR");await new Promise(r=>setImmediate(r));assert.equal(a.nodes.get("sede").disabled,true);assert.equal(a.nodes.get("sede").options.length,1);});

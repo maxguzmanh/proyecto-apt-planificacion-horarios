@@ -25,12 +25,24 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             const response = await fetch(`${form.dataset[rutas[indice]]}?${params}`, { credentials: "same-origin" });
             if (!response.ok) throw new Error();
-            const datos = await response.json();
+            let datos = await response.json();
+            if (indice === 4) {
+                const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
+                if (modalidad && modalidad.dataset.codigo === "VIR") datos = datos.filter(item => item.codigo === "SEDE-VIR");
+                if (modalidad && modalidad.dataset.codigo === "PRE") datos = datos.filter(item => item.codigo !== "SEDE-VIR");
+            }
             if (solicitud !== version) return false;
             limpiarDesde(indice);
-            datos.forEach(item => selects[indice].appendChild(new Option(item.nombre, item.id)));
+            datos.forEach(item => { const option = new Option(item.nombre, item.id); option.dataset.codigo = item.codigo || ""; selects[indice].appendChild(option); });
             selects[indice].disabled = datos.length === 0;
-            if (actual) selects[indice].value = actual;
+            if (actual && datos.some(item => String(item.id) === actual)) selects[indice].value = actual;
+            if (indice === 4) {
+                const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
+                const virtuales = datos.filter(item => item.codigo === "SEDE-VIR");
+                if (modalidad && modalidad.dataset.codigo === "VIR" && virtuales.length === 1) {
+                    selects[indice].value = String(virtuales[0].id);
+                }
+            }
             estado.textContent = datos.length ? "" : `No hay opciones de ${nombres[indice]} para este contexto.`;
             return Boolean(selects[indice].value);
         } catch (_) {
@@ -41,7 +53,10 @@ document.addEventListener("DOMContentLoaded", function () {
     selects.forEach((select, indice) => select.addEventListener("change", async function () {
         const solicitud = ++version;
         limpiarDesde(indice + 1);
-        if (indice + 1 < selects.length && select.value) await cargar(indice + 1, "", solicitud);
+        if (indice + 1 < selects.length && select.value) {
+            const siguiente = await cargar(indice + 1, "", solicitud);
+            if (indice === 3 && siguiente && solicitud === version) await cargar(5, "", solicitud);
+        }
         if (solicitud === version && selects.every(s => !s.disabled && s.value)) form.requestSubmit();
         else {
             const calendario = document.getElementById("uniplan-calendar");
@@ -65,6 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 1; i < selects.length; i++) {
             if (!await cargar(i, seleccion[i], version)) break;
         }
+        if (seleccion[4] && selects[4].value !== seleccion[4] && selects.every(s => !s.disabled && s.value)) form.requestSubmit();
     }
     restaurar();
 });

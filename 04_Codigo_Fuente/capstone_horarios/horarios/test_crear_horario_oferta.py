@@ -120,7 +120,7 @@ class CrearHorarioOfertaTests(TestCase):
     def test_panel_identifica_ofertas_arrastrables(self):
         response = self.client.get(reverse("planificacion"), self.filtros)
         self.assertContains(response, f'data-oferta-id="{self.oferta.pk}"')
-        self.assertContains(response, "Arrastre esta tarjeta al calendario")
+        self.assertContains(response, "Arrastrar al calendario o")
         self.assertNotContains(response, 'id="crear-horario-modal"')
         self.assertContains(response, "calendario.js")
 
@@ -215,9 +215,9 @@ class CrearHorarioOfertaTests(TestCase):
 
     def test_tarjeta_completa_y_confirmacion_de_movimiento(self):
         response = self.client.get(reverse("planificacion"), self.filtros)
-        self.assertContains(response, 'class="subject-offer-option offer-drag-card"')
+        self.assertContains(response, 'class="subject-offer-option teacher-compact-card offer-drag-card"')
         self.assertNotContains(response, "offer-drag-handle")
-        self.assertContains(response, "Tarjeta arrastrable.")
+        self.assertContains(response, "doble clic o Enter para ver detalle.")
         self.assertContains(response, "calendar-context-menu")
         self.assertContains(response, 'id="mover-horario-modal"')
         self.assertContains(response, "¿Está seguro de realizar los cambios?")

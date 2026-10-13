@@ -17,6 +17,7 @@ from academico.choices import DiaSemana
 
 from academico.models import (
     Asignatura,
+    DisponibilidadProfesor,
     Aula,
     CentroTutorial,
     Facultad,
@@ -34,7 +35,7 @@ from .services import (obtener_panel_academico, obtener_resumen_docente,
     calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes, operacion_planificacion)
 from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm, AsignarAulaHorarioForm
 from .presentacion import respuesta_error
-from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
+from .calendario import sedes_de_modalidad, SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
 from .models import (
     Grupo,
     Horario,
@@ -233,8 +234,13 @@ def cargar_sedes(request):
     centro_id = request.GET.get("centro")
     if not centro_id or not centro_id.isdigit():
         return JsonResponse([], safe=False)
-    sedes = Sede.objects.filter(centro_tutorial_id=centro_id, centro_tutorial__activo=True,
-        activo=True).order_by("nombre").values("id", "nombre")
+    modalidad = None
+    modalidad_id = request.GET.get("modalidad")
+    if modalidad_id:
+        if not modalidad_id.isdigit(): return JsonResponse([], safe=False)
+        modalidad = Modalidad.objects.filter(pk=modalidad_id, activo=True).first()
+        if modalidad is None: return JsonResponse([], safe=False)
+    sedes = sedes_de_modalidad(centro_id, modalidad).order_by("nombre").values("id", "nombre", "codigo")
     return JsonResponse(list(sedes), safe=False)
 
 
@@ -244,7 +250,7 @@ def cargar_modalidades(request):
     if not centro_id.isdigit() or not programa_id.isdigit():
         return JsonResponse([], safe=False)
     ofertas = ofertas_de_programa(centro_id, programa_id)
-    modalidades = Modalidad.objects.filter(activo=True, pk__in=ofertas.values("modalidad_id")).order_by("nombre").values("id", "nombre")
+    modalidades = Modalidad.objects.filter(activo=True, pk__in=ofertas.values("modalidad_id")).order_by("nombre").values("id", "nombre", "codigo")
     return JsonResponse(list(modalidades), safe=False)
 
 
@@ -1460,9 +1466,18 @@ def detalle_oferta_calendario(request, oferta_id):
     resumen = obtener_resumen_docente([oferta.profesor_id], oferta.periodo)
     carga = obtener_carga_activa(oferta.profesor_id, oferta.periodo, resumen=resumen)
     pendientes = calcular_horas_pendientes(oferta.profesor_id, oferta.periodo, resumen=resumen)
+    plan = PlanEstudioAsignatura.objects.filter(asignatura=oferta.asignatura, programa=contexto["programa"],
+        semestre=contexto["semestre"], activo=True).select_related("area_academica").first()
+    from .presentacion import horarios_con_contexto, evento_con_contexto
+    ocupaciones = horarios_con_contexto(Horario.objects.filter(activo=True, oferta__activo=True,
+        oferta__profesor=oferta.profesor, oferta__periodo=oferta.periodo)).order_by("dia", "hora_inicio", "pk")
     return JsonResponse({
         "oferta_id": oferta.pk, "asignatura": oferta.asignatura.nombre,
+        "area_academica": plan.area_academica.nombre if plan and plan.area_academica else "Área académica no registrada",
         "codigo_asignatura": oferta.asignatura.codigo, "profesor": str(oferta.profesor),
+        "programas": list(dict.fromkeys(g.programa.nombre for g in oferta.grupos.all())),
+        "facultades": list(dict.fromkeys(g.programa.facultad.nombre for g in oferta.grupos.all())),
+        "ocupaciones": [evento_con_contexto(h) for h in ocupaciones],
         "grupos": [{"id": g.pk, "codigo": g.codigo, "programa": g.programa.nombre} for g in oferta.grupos.all()],
         "modalidad": oferta.modalidad.nombre,
         "horas_asignadas": str(carga.horas_asignadas) if carga else None,
@@ -1606,4 +1621,8 @@ def ocupaciones_oferta(request, oferta_id):
         evento.update(id=f"ocupacion-{horario.pk}", editable=False, startEditable=False, durationEditable=False, classNames=["evento-ocupacion-externa"])
         evento["extendedProps"]["ocupacion_externa"] = True
         eventos.append(evento)
-    return JsonResponse(eventos, safe=False)
+    disponibilidad = DisponibilidadProfesor.objects.filter(profesor=oferta.profesor,
+        periodo=oferta.periodo, activo=True).order_by("dia", "hora_inicio", "pk")
+    return JsonResponse({"profesor": str(oferta.profesor), "periodo": oferta.periodo.codigo,
+        "ocupaciones": eventos, "disponibilidad": [{"dia": b.dia, "hora_inicio": b.hora_inicio.isoformat(),
+        "hora_fin": b.hora_fin.isoformat()} for b in disponibilidad]})

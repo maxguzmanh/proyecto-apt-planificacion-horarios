@@ -19,6 +19,17 @@ def ofertas_de_programa(centro, programa):
     )
 
 
+def sedes_de_modalidad(centro, modalidad=None):
+    """Opciones visuales y contexto seguro mediante códigos estables existentes."""
+    sedes = Sede.objects.filter(centro_tutorial=centro, centro_tutorial__activo=True, activo=True)
+    if modalidad and modalidad.codigo == "VIR":
+        virtuales = sedes.filter(codigo="SEDE-VIR")
+        return virtuales if virtuales.count() == 1 else sedes.none()
+    if modalidad and modalidad.codigo == "PRE":
+        return sedes.exclude(codigo="SEDE-VIR")
+    return sedes
+
+
 def resolver_contexto_calendario(parametros):
     ids = {}
     for campo in ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"]:
@@ -35,7 +46,7 @@ def resolver_contexto_calendario(parametros):
     ofertas = ofertas_de_programa(centro, programa)
     modalidad = get_object_or_404(Modalidad, pk=ids["modalidad"], activo=True,
         pk__in=ofertas.values("modalidad_id"))
-    sede = get_object_or_404(Sede, pk=ids["sede"], centro_tutorial=centro, activo=True)
+    sede = get_object_or_404(sedes_de_modalidad(centro, modalidad), pk=ids["sede"])
     ofertas = ofertas.filter(modalidad=modalidad)
     periodo = get_object_or_404(PeriodoAcademico, pk=ids["periodo"], activo=True,
         pk__in=ofertas.values("periodo_id"))
@@ -70,7 +81,7 @@ def serializar_evento(horario):
         "end": datetime.combine(fecha, horario.hora_fin).isoformat(),
         "allDay": False, "classNames": [clase],
         "extendedProps": {
-            "horario_id": horario.pk,
+            "horario_id": horario.pk, "oferta_id": horario.oferta_id,
             "asignatura": horario.oferta.asignatura.nombre,
             "codigo_asignatura": horario.oferta.asignatura.codigo,
             "profesor": str(horario.oferta.profesor),
@@ -93,7 +104,7 @@ def oferta_del_contexto(oferta_id, contexto, *, bloquear=False):
     """Comprueba la oferta real y sus grupos; nunca crea relaciones académicas."""
     ofertas = OfertaAcademica.objects.select_related(
         "asignatura", "profesor", "periodo", "modalidad",
-    ).prefetch_related("grupos__programa")
+    ).prefetch_related("grupos__programa__facultad")
     if bloquear:
         ofertas = ofertas.select_for_update(of=("self",))
     oferta = get_object_or_404(ofertas, pk=oferta_id, activo=True,

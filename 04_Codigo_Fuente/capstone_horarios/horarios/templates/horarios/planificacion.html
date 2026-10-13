@@ -1,5 +1,5 @@
 {% extends "horarios/base.html" %}
-{% load static %}
+{% load static horas %}
 {% block title %}Planificación | UniPlan{% endblock %}
 {% block content %}
 <div class="app-page planning-workspace">
@@ -84,60 +84,23 @@
                             <span class="subject-code">{{ item.plan.asignatura.codigo }} · {{ item.plan.creditos }} créditos</span>
                         </summary>
                         <div class="academic-subject-content">
-                            <div class="subject-section-label">Área académica</div>
-                            <p class="subject-metadata">{{ item.plan.area_academica.nombre|default:"Área académica no registrada" }}</p>
-                            <div class="subject-section-label">Grupos del contexto</div>
-                            <div class="subject-tags">{% for grupo in item.grupos %}<span>{{ grupo.codigo }}</span>{% empty %}<span class="text-secondary">Sin grupos relacionados</span>{% endfor %}</div>
-                            <div class="subject-section-label mt-3">Modalidad</div>
-                            <p class="subject-metadata">{% for modalidad in item.modalidades %}{{ modalidad.nombre }}{% if not forloop.last %} · {% endif %}{% empty %}Modalidad no determinada{% endfor %}</p>
+                            <div class="subject-section-label">Profesores disponibles</div>
                             {% for docente in item.profesores %}
-                            <section class="subject-teacher" aria-label="Información de {{ docente.profesor }}">
-                                <div class="subject-section-label">Profesor asignado</div>
-                                <div class="subject-professor">{{ docente.profesor }}</div>
-                                <div class="subject-offers">
-                                    {% for oferta in docente.ofertas %}
-                                    <div class="subject-offer-option{% if perms.horarios.add_horario and oferta.profesor.activo %} offer-drag-card{% endif %}"
-                                        data-offer-id="{{ oferta.pk }}"
-                                        {% if perms.horarios.add_horario and oferta.profesor.activo %}
-                                        tabindex="0" role="group" aria-label="Oferta de {{ item.plan.asignatura.nombre }} con {{ docente.profesor }}. Tarjeta arrastrable."
-                                        data-oferta-id="{{ oferta.pk }}" data-asignatura="{{ item.plan.asignatura.nombre }}"
-                                        data-profesor="{{ docente.profesor }}" data-modalidad="{{ oferta.modalidad.nombre }}"
-                                        data-grupos="{% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}"
-                                        {% endif %}>
-                                        <div class="small fw-semibold">{{ item.plan.asignatura.nombre }}</div>
-                                        <div class="small mt-1">{{ docente.profesor }}</div>
-                                        <p class="small text-secondary mb-2">{{ oferta.modalidad.nombre }} · {% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
-                                        {% if perms.horarios.add_horario and oferta.profesor.activo %}
-                                        <span class="small">Carga: {% if docente.carga %}{{ docente.carga.horas_asignadas|floatformat:"2" }} h{% else %}Sin registrar{% endif %} · Pendientes: {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|floatformat:"2" }} h{% else %}Sin calcular{% endif %}</span>
-                                        <span class="offer-drag-hint">⠿ Arrastre esta tarjeta al calendario · 1 hora</span>
-                                        {% elif not oferta.profesor.activo %}<span class="subject-missing-data">Oferta no disponible</span>{% endif %}
-                                    </div>
-                                    {% endfor %}
+                            <div class="subject-offers">
+                                {% for oferta in docente.ofertas %}
+                                <div class="subject-offer-option teacher-compact-card{% if perms.horarios.add_horario and oferta.profesor.activo %} offer-drag-card{% endif %}"
+                                     tabindex="0" role="group" data-offer-id="{{ oferta.pk }}" data-oferta-id="{{ oferta.pk }}"
+                                     data-asignatura="{{ item.plan.asignatura.nombre }}" data-profesor="{{ docente.profesor }}"
+                                     data-horas="{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }}{% endif %}"
+                                     aria-label="{{ docente.profesor }}, {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} horas pendientes{% else %}Sin carga{% endif %}. {% if perms.horarios.add_horario and oferta.profesor.activo %}Arrastrar al calendario o {% endif %}doble clic o Enter para ver detalle."
+                                     title="{{ docente.profesor }} · {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h pendientes{% else %}Sin carga{% endif %}&#10;{% for bloque in docente.disponibilidad|slice:':2' %}{{ bloque.get_dia_display }} {{ bloque.hora_inicio|time:'H:i' }}–{{ bloque.hora_fin|time:'H:i' }}{% if not forloop.last %} · {% endif %}{% empty %}Disponibilidad no registrada{% endfor %}{% if docente.disponibilidad|length > 2 %} · …{% endif %}&#10;Doble clic para ver detalle">
+                                    <span class="teacher-compact-name">{{ docente.profesor }}</span>
+                                    <span class="teacher-hours-badge">{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h{% else %}Sin carga{% endif %}</span>
                                 </div>
-                                <p class="subject-hours-caption">Horas semanales del profesor en el periodo</p>
-                                <dl class="subject-hours">
-                                    {% if docente.carga %}
-                                    <div><dt>Carga asignada</dt><dd>{{ docente.carga.horas_asignadas|floatformat:"2" }} h</dd></div>
-                                    {% else %}
-                                    <div class="subject-missing-data">Carga docente no registrada</div>
-                                    {% endif %}
-                                    <div><dt>Horas planificadas</dt><dd>{{ docente.horas_planificadas|floatformat:"2" }} h</dd></div>
-                                    {% if docente.horas_pendientes != None %}
-                                    <div {% if docente.horas_pendientes < 0 %}class="text-danger"{% endif %}><dt>Horas pendientes</dt><dd>{{ docente.horas_pendientes|floatformat:"2" }} h</dd></div>
-                                    {% else %}
-                                    <div><dt>Horas pendientes</dt><dd>Sin calcular</dd></div>
-                                    {% endif %}
-                                </dl>
-                                <div class="subject-availability-zone">
-                                    <div class="subject-section-label">Disponibilidad</div>
-                                    <ul class="subject-availability-list">
-                                        {% for bloque in docente.disponibilidad %}
-                                        <li>{{ bloque.get_dia_display }} <span>{{ bloque.hora_inicio|time:"H:i" }}–{{ bloque.hora_fin|time:"H:i" }}</span></li>
-                                        {% empty %}<li class="subject-missing-data">Disponibilidad no registrada</li>{% endfor %}
-                                    </ul>
-                                </div>
-                            </section>
-                            {% empty %}<p class="subject-missing-data mt-3 mb-0">Sin profesor asignado</p>{% endfor %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                            {% if not item.profesores %}<p class="subject-missing-data mt-3 mb-0">Sin profesor asignado</p>{% endif %}
                         </div>
                     </details>
                     {% empty %}
@@ -301,6 +264,7 @@
 {% endif %}
 {% if filtros_completos %}
 {% include "horarios/modal_detalle_horario.html" %}
+{% include "horarios/modal_docente.html" %}
 {% if perms.horarios.delete_horario %}{% include "horarios/modal_eliminar_horario.html" %}{% endif %}
 <div id="calendar-context-menu" class="calendar-context-menu" role="menu" aria-label="Opciones del horario" hidden>
     <button id="context-asignar-aula" type="button" role="menuitem" {% if not perms.horarios.change_horario %}hidden{% endif %}>Asignar aula</button>

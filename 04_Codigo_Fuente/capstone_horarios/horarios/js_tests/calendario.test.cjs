@@ -4,15 +4,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../static/horarios/js/calendario.js"), "utf8");
-function setup({ canCreate = true, canEdit = true, canDelete = true, rejected = false, networkError = false } = {}) {
-    const nodes = new Map(), calls = [], modales = new Map(), documentListeners = {};
+function setup({ canCreate = true, canEdit = true, canDelete = true, rejected = false, networkError = false, disponibilidad = null, deferReferences = false } = {}) {
+    const nodes = new Map(), calls = [], modales = new Map(), documentListeners = {}, tips = [], referenceResponses = [];
     let options, draggableOptions, refetches = 0; const added = []; const normalEvents = []; let removedReferences=0;
     class Node {
         constructor(id) { this.id = id; this.value = ""; this.listeners = {}; this.children = []; this.textContent = ""; this.style = {}; this.hidden = true; this.offsetWidth = 180; this.offsetHeight = 80; }
         addEventListener(name, fn) { this.listeners[name] = fn; }
         replaceChildren(...children) { this.children = children; this.value = ""; }
         appendChild(child) { this.children.push(child); }
-        querySelectorAll() { return []; }
+        querySelectorAll(selector) { return this.id === ".academic-panel" && selector === ".teacher-compact-card" ? [node("teacher-card")] : []; }
+        getAttribute(name) { return this[name] || null; }
         setAttribute(name, value) { this[name] = value; }
         getBoundingClientRect() { return { left: 10, bottom: 50 }; }
         contains(target) { return target === this; }
@@ -24,7 +25,8 @@ function setup({ canCreate = true, canEdit = true, canDelete = true, rejected = 
     function node(id) { if (!nodes.has(id)) nodes.set(id, new Node(id)); return nodes.get(id); }
     node("uniplan-calendar").dataset = { canCreate: String(canCreate), canEdit: String(canEdit), canDelete: String(canDelete), deleteUrl: "/eliminar/",
         referenceWeek: "2000-01-03", eventsUrl: "/eventos/", moveUrl: "/mover/", resizeUrl: "/resize/",
-        occupationsBase: "/ofertas/0/ocupaciones/", createUrl: "/crear/", assignUrl: "/asignar/", aulasBase: "/horarios/0/aulas/", filters: "sede=1&semestre=5" };
+        offerBase: "/ofertas/0/", occupationsBase: "/ofertas/0/ocupaciones/", createUrl: "/crear/", assignUrl: "/asignar/", aulasBase: "/horarios/0/aulas/", filters: "sede=1&semestre=5" };
+    node("teacher-card").dataset={ofertaId:"7",asignatura:"Asignatura real",profesor:"Docente real",horas:"8"}; node("teacher-card").title="Docente real · 8 h pendientes\nLunes 08:00–12:00\nDoble clic para ver detalle";
     const document = { addEventListener: (name, fn) => name === "DOMContentLoaded" ? fn() : documentListeners[name] = fn,
         getElementById: id => !canEdit && ["mover-horario-modal", "asignar-aula-modal"].includes(id) ? null : node(id),
         querySelector: selector => selector.includes("csrfmiddlewaretoken") ? { value: "csrf-test" } : node(selector),
@@ -38,20 +40,22 @@ function setup({ canCreate = true, canEdit = true, canDelete = true, rejected = 
             if (networkError) throw new Error("Error de red");
             return { ok: !rejected, json: async () => rejected ? { errors: { oferta: ["Conflicto backend"] } } : { ok: true, horario_id: 9, event: { classNames: url.includes("asignar") ? ["evento-completo"] : ["evento-pendiente"] } } };
         }
-        if (url.includes("/ocupaciones/")) return { ok:true, json:async()=>[ { ...evento(), id:"ocupacion-9", editable:false, startEditable:false, durationEditable:false, classNames:["evento-ocupacion-externa"], extendedProps:{...evento().extendedProps, ocupacion_externa:true} } ] };
+        if (url.includes("/ofertas/") && !url.includes("/ocupaciones/")) return {ok:true,json:async()=>({profesor:"Docente real",asignatura:"Asignatura real",codigo_asignatura:"ASIG",programas:["Programa"],facultades:["Facultad"],grupos:[{codigo:"G1"}],modalidad:"Presencial",horas_asignadas:"10",horas_planificadas:"2",horas_pendientes:"8",disponibilidad:[{nombre_dia:"Lunes",hora_inicio:"08:00:00",hora_fin:"12:00:00"}],ocupaciones:[]})};
+        if (url.includes("/ocupaciones/")) return { ok:true, json:async()=>{const datos = ({profesor:"Docente real", disponibilidad: disponibilidad === null ? ["LU","MA","MI","JU","VI","SA","DO"].map(dia=>({dia,hora_inicio:"06:00:00",hora_fin:"22:00:00"})) : disponibilidad, ocupaciones:[ { ...evento(), id:"ocupacion-9", editable:false, startEditable:false, durationEditable:false, classNames:["evento-ocupacion-externa"], extendedProps:{...evento().extendedProps, ocupacion_externa:true} } ]}); if (deferReferences) return new Promise(resolve=>referenceResponses.push({resolve,datos})); return datos; } };
         if (url.includes("/aulas/")) return { ok: true, json: async () => ({ event: { extendedProps: { aula_id: null } }, aulas: [{ id: 3, nombre: "Aula real", sede: "Sede real" }] }) };
         return { ok: true, text: async () => "panel actualizado" };
     };
-    const bootstrap = { Modal };
+    class Tooltip { constructor(el, config) { this.el=el;this.config=config;this.visible=false;this.disposed=false;tips.push(this);el.addEventListener("mouseenter",()=>{this.visible=true;});el.addEventListener("mouseleave",()=>{this.visible=false;}); } hide(){this.visible=false;} dispose(){this.disposed=true;this.visible=false;} }
+    const bootstrap = { Modal, Tooltip };
     vm.runInNewContext(source, { document, fetch, bootstrap, window: { FullCalendar: { Calendar, Draggable }, bootstrap,
         addEventListener() {}, innerWidth: 1200, innerHeight: 900, location: { href: "/planificacion/?sede=1" } },
         FullCalendar: { Calendar, Draggable }, Option: class { constructor(text, value) { this.text = text; this.value = value; } },
         DOMParser: class { parseFromString() { return { querySelector: () => node("nuevo-panel") }; } } });
-    return { node, calls, modales, options, draggableOptions, documentListeners, added, normalEvents, removedReferences:()=>removedReferences, refetches: () => refetches };
+    return { node, calls, modales, options, draggableOptions, documentListeners, referenceResponses, tips, added, normalEvents, removedReferences:()=>removedReferences, refetches: () => refetches };
 }
 function evento(aulaId = null) {
     return { id: "9", title: "Asignatura real", start: new Date(2000, 0, 3, 8), end: new Date(2000, 0, 3, 9),
-        extendedProps: { horario_id: 9, asignatura: "Asignatura real", codigo_asignatura: "ASIG", profesor: "Docente real",
+        extendedProps: { horario_id: 9, oferta_id: 7, asignatura: "Asignatura real", codigo_asignatura: "ASIG", profesor: "Docente real",
             sede: "Sede real", grupos: [], modalidad: "Presencial", dia: "LU", hora_inicio: "08:00:00", hora_fin: "09:00:00",
             aula_id: aulaId, aula_pendiente: aulaId === null, aula: aulaId === null ? "Aula pendiente" : "Sala real" } };
 }
@@ -219,3 +223,39 @@ test("cancelar drag limpia referencias", async()=>{ const a=setup(); await inici
 test("ocupación abre detalle de solo lectura sin menú", async()=>{ const a=setup(); await iniciarDrag(a); const e=a.added[0]; a.options.eventClick({event:e}); assert.ok(a.modales.get("detalle-horario-modal").visible); abrirMenu(a,e); assert.equal(a.node("calendar-context-menu").hidden,true); });
 
 test("respuesta tardía después de terminar drag no agrega referencias", async()=>{ const a=setup(); const card={dataset:{ofertaId:"7"}}; a.node(".academic-panel").listeners.pointerdown({target:{closest:()=>card},clientX:0,clientY:0,pointerId:1,button:0}); a.documentListeners.pointermove({clientX:10,clientY:0,pointerId:1}); a.documentListeners.pointerup(); await new Promise(r=>setImmediate(r)); assert.equal(a.added.length,0); });
+
+async function doble(a) { a.node(".academic-panel").listeners.dblclick({target:{closest:()=>a.node("teacher-card")},preventDefault(){},stopPropagation(){}}); await new Promise(r=>setImmediate(r)); }
+test("doble clic abre modal con horas reales",async()=>{ const a=setup(); await doble(a); assert.ok(a.modales.get("docente-modal").visible);assert.equal(a.node("docente-pendientes").textContent,"8 h");assert.equal(a.node("docente-carga").textContent,"10 h"); });
+test("doble clic no crea horario ni inicia ocupaciones de drag",async()=>{ const a=setup(); await doble(a); assert.ok(!a.calls.some(c=>c.method==="POST"||c.url.includes("ocupaciones"))); });
+test("drag real no abre modal docente",async()=>{ const a=setup();await iniciarDrag(a);assert.equal(a.modales.get("docente-modal").visible,false); });
+test("doble clic posterior a un drag se ignora",async()=>{ const a=setup(); const card=a.node("teacher-card");a.node(".academic-panel").listeners.pointerdown({target:{closest:()=>card},clientX:0,clientY:0,pointerId:1,button:0});a.documentListeners.pointermove({clientX:10,clientY:0,pointerId:1});a.documentListeners.pointerup();await doble(a);assert.equal(a.modales.get("docente-modal").visible,false); });
+test("tooltip docente muestra pendientes y se oculta al salir",()=>{ const a=setup();const tip=a.tips[0];a.node("teacher-card").listeners.mouseenter();assert.equal(tip.visible,true);assert.ok(tip.config.title.includes("8 h pendientes"));a.node("teacher-card").listeners.mouseleave();assert.equal(tip.visible,false); });
+test("tooltip horario incluye contexto",()=>{ const a=setup();const el=a.node("box-tip");a.options.eventDidMount({event:evento(),el});const tip=a.tips.at(-1);assert.ok(tip.config.title.includes("Sede real"));assert.ok(tip.config.title.includes("08:00–09:00")); });
+test("tooltip ocupación externa indica otro contexto",async()=>{ const a=setup();await iniciarDrag(a);a.options.eventDidMount({event:a.added[0],el:a.node("external-tip")});assert.ok(a.tips.at(-1).config.title.startsWith("OCUPADO EN OTRO CONTEXTO")); });
+test("desmontar evento destruye tooltip",()=>{ const a=setup();const el=a.node("remove-tip");a.options.eventDidMount({event:evento(),el});const tip=a.tips.at(-1);a.options.eventWillUnmount({el});assert.equal(tip.disposed,true); });
+test("cerrar modal docente no altera calendario",async()=>{const a=setup();await doble(a);a.modales.get("docente-modal").hide();assert.equal(a.refetches(),0);assert.ok(!a.calls.some(c=>c.method==="POST"));});
+test("detalle docente accesible mediante Enter",async()=>{const a=setup();a.node(".academic-panel").listeners.keydown({target:{closest:()=>a.node("teacher-card")},key:"Enter",preventDefault(){}});await new Promise(r=>setImmediate(r));assert.ok(a.modales.get("docente-modal").visible);});
+
+function grises(a){return a.added.filter(e=>e.display==="background");}
+test("drag dibuja complemento de disponibilidad parcial",async()=>{const a=setup({disponibilidad:[{dia:"LU",hora_inicio:"09:00:00",hora_fin:"13:00:00"}]});await iniciarDrag(a);const lunes=grises(a).filter(e=>e.start.getDay()===1);assert.deepEqual(lunes.map(e=>[e.start.getHours(),e.end.getHours()]),[[6,9],[13,22]]);assert.ok(grises(a).every(e=>e.editable===false));});
+test("día sin disponibilidad completamente gris en rango visual",async()=>{const a=setup({disponibilidad:[]});await iniciarDrag(a);assert.equal(grises(a).length,7);assert.ok(grises(a).every(e=>e.start.getHours()===6&&e.end.getHours()===22));});
+test("varios bloques dejan varias franjas libres",async()=>{const a=setup({disponibilidad:[{dia:"LU",hora_inicio:"09:00:00",hora_fin:"11:00:00"},{dia:"LU",hora_inicio:"13:00:00",hora_fin:"15:00:00"}]});await iniciarDrag(a);assert.deepEqual(grises(a).filter(e=>e.start.getDay()===1).map(e=>[e.start.getHours(),e.end.getHours()]),[[6,9],[11,13],[15,22]]);});
+test("disponibilidad se recorta al rango y une bloques consecutivos",async()=>{const a=setup({disponibilidad:[{dia:"LU",hora_inicio:"05:00:00",hora_fin:"10:00:00"},{dia:"LU",hora_inicio:"10:00:00",hora_fin:"23:00:00"}]});await iniciarDrag(a);assert.equal(grises(a).filter(e=>e.start.getDay()===1).length,0);});
+test("gris convive con ocupaciones y conserva eventos normales",async()=>{const a=setup({disponibilidad:[]});a.normalEvents.push({...evento(),id:"otro",extendedProps:{...evento().extendedProps,horario_id:99}});await iniciarDrag(a);assert.ok(a.added.some(e=>e.extendedProps.ocupacion_externa));assert.equal(grises(a).length,7);assert.equal(a.normalEvents.length,1);});
+test("fin y cancelación limpian gris y ocupación",async()=>{for(const nombre of ["pointerup","pointercancel"]){const a=setup({disponibilidad:[]});await iniciarDrag(a);a.documentListeners[nombre]();assert.equal(a.removedReferences(),a.added.length);}});
+test("respuesta tardía no vuelve a pintar gris",async()=>{const a=setup({disponibilidad:[]});const card={dataset:{ofertaId:"7"}};a.node(".academic-panel").listeners.pointerdown({target:{closest:()=>card},clientX:0,clientY:0,pointerId:1});a.documentListeners.pointermove({clientX:10,clientY:0,pointerId:1});a.documentListeners.pointercancel();await new Promise(r=>setImmediate(r));assert.equal(a.added.length,0);});
+test("drop gris llega al backend y su rechazo retira provisional",async()=>{const a=setup({disponibilidad:[],rejected:true});await iniciarDrag(a);const info=recibido();await a.options.eventReceive(info);assert.ok(a.calls.some(c=>c.method==="POST"));assert.equal(info.removed,1);assert.equal(a.removedReferences(),a.added.length);});
+test("bloques externos contrastan y siguen diferenciados",()=>{const css=fs.readFileSync(path.join(__dirname,"../static/horarios/css/estilos.css"),"utf8");assert.ok(css.includes("opacity: 1"));assert.ok(css.includes("rgba(203, 216, 232, .90)"));assert.ok(css.includes("border: 2px dashed"));assert.ok(css.includes(".zona-no-disponible"));});
+test("gris no abre detalle ni ofrece eliminación",async()=>{const a=setup({disponibilidad:[]});await iniciarDrag(a);const e=grises(a)[0];assert.equal(a.options.eventContent({event:e}).domNodes.length,0);a.options.eventClick({event:e});assert.equal(a.modales.get("detalle-horario-modal").visible,false);});
+
+test("mover evento existente carga gris y ocupaciones sin permiso crear",async()=>{const a=setup({canCreate:false,disponibilidad:[]});await a.options.eventDragStart({event:evento()});assert.equal(grises(a).length,7);assert.ok(a.added.some(e=>e.extendedProps.ocupacion_externa));assert.equal(a.calls[0].url,"/ofertas/7/ocupaciones/?sede=1&semestre=5");});
+test("resize carga las mismas referencias",async()=>{const a=setup({disponibilidad:[]});await a.options.eventResizeStart({event:evento()});assert.equal(grises(a).length,7);assert.ok(a.added.some(e=>e.extendedProps.ocupacion_externa));});
+test("cancelar drag existente limpia referencias y respuestas pendientes",async()=>{const a=setup({disponibilidad:[]});await a.options.eventDragStart({event:evento()});a.options.eventDragStop();assert.equal(a.removedReferences(),a.added.length);assert.equal(a.calls.filter(c=>c.method==="POST").length,0);});
+test("cancelar resize limpia referencias",async()=>{const a=setup({disponibilidad:[]});await a.options.eventResizeStart({event:evento()});a.options.eventResizeStop();assert.equal(a.removedReferences(),a.added.length);});
+test("cancelar confirmación de movimiento revierte y limpia",async()=>{const a=setup({disponibilidad:[]});await a.options.eventDragStart({event:evento()});const info=cambio();a.options.eventDrop(info);a.modales.get("mover-horario-modal").hide();assert.equal(info.reverted,1);assert.equal(a.removedReferences(),a.added.length);});
+test("rechazo backend en movimiento revierte y limpia",async()=>{const a=setup({disponibilidad:[],rejected:true});await a.options.eventDragStart({event:evento()});const info=cambio();a.options.eventDrop(info);await confirmar(a);assert.equal(info.reverted,1);assert.equal(a.removedReferences(),a.added.length);});
+test("rechazo backend en resize revierte y limpia",async()=>{const a=setup({disponibilidad:[],rejected:true});await a.options.eventResizeStart({event:evento()});const info=cambio();a.options.eventResize(info);await confirmar(a);assert.equal(info.reverted,1);assert.equal(a.removedReferences(),a.added.length);});
+test("respuesta tardía de drag anterior no contamina resize activo",async()=>{const a=setup({disponibilidad:[],deferReferences:true});a.options.eventDragStart({event:evento()});await new Promise(r=>setImmediate(r));a.options.eventDragStop();a.options.eventResizeStart({event:evento()});await new Promise(r=>setImmediate(r));a.referenceResponses[0].resolve(a.referenceResponses[0].datos);await new Promise(r=>setImmediate(r));assert.equal(a.added.length,0);a.referenceResponses[1].resolve(a.referenceResponses[1].datos);await new Promise(r=>setImmediate(r));assert.equal(grises(a).length,7);});
+test("respuesta posterior al fin de resize no pinta referencias",async()=>{const a=setup({disponibilidad:[],deferReferences:true});a.options.eventResizeStart({event:evento()});await new Promise(r=>setImmediate(r));a.options.eventResizeStop();a.referenceResponses[0].resolve(a.referenceResponses[0].datos);await new Promise(r=>setImmediate(r));assert.equal(a.added.length,0);});
+test("referencias de solo lectura no pueden iniciar interacción",async()=>{const a=setup();for(const p of [{ocupacion_externa:true},{disponibilidad_visual:true},{provisional:true}])await a.options.eventDragStart({event:{extendedProps:{oferta_id:7,...p}}});assert.equal(a.calls.length,0);});
+test("confirmar resize limpia y actualiza sin revertir",async()=>{const a=setup({disponibilidad:[]});await a.options.eventResizeStart({event:evento()});const info=cambio();a.options.eventResize(info);await confirmar(a);assert.equal(info.reverted,0);assert.equal(a.removedReferences(),a.added.length);assert.equal(a.refetches(),1);});

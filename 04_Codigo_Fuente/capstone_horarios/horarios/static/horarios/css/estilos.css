@@ -1862,6 +1862,17 @@ a:hover {
 .fc-event:hover .uniplan-event-delete, .uniplan-event-delete:focus-visible { opacity: 1; }
 .uniplan-event-delete:hover, .uniplan-event-delete:focus-visible { background: #fee2e2; color: #991b1b; outline: 2px solid #991b1b; outline-offset: -2px; }
 
-#uniplan-calendar .evento-ocupacion-externa { background: #dbe4ef; border: 1px dashed #526579; color: #24364a; opacity: .42; cursor: default; }
+#uniplan-calendar .evento-ocupacion-externa { background: rgba(203, 216, 232, .90); border: 2px dashed #425a73; color: #142b43; opacity: 1; cursor: default; }
 #uniplan-calendar .evento-ocupacion-externa .uniplan-event-content { padding-right: 0; }
 .excel-export { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 6px; }
+
+.teacher-compact-card { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; margin:6px 0; min-height:42px; }
+.teacher-compact-name { font-weight:600; min-width:0; overflow-wrap:anywhere; }
+.teacher-hours-badge { flex-shrink:0; border-radius:6px; padding:3px 7px; background:#e0e9f5; color:#173d65; font-size:.8rem; font-weight:600; }
+.teacher-compact-card:focus-visible { outline:2px solid #295b91; outline-offset:2px; }
+.tooltip-inner { white-space:pre-line; max-width:320px; text-align:left; }
+
+#uniplan-calendar .zona-no-disponible { background: #64748b; opacity: .20; pointer-events: none; }
+
+#uniplan-calendar .evento-ocupacion-externa .uniplan-event-content { font-weight: 500; }
+#uniplan-calendar .evento-ocupacion-externa .uniplan-event-content > div:first-child { font-weight: 700; font-size: .68rem; letter-spacing: .025em; }

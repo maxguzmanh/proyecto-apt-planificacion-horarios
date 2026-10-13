@@ -42,8 +42,13 @@ class Command(BaseCommand):
             help="Reconcilia exclusivamente carga y disponibilidad ficticias de los seis docentes demo en 01-2026. No modifica catálogos ni horarios.",
         )
 
+        parser.add_argument("--enriquecer", action="store_true", help="Enriquece únicamente opciones y condiciones DEMO existentes, sin crear ni modificar horarios.")
+
     @transaction.atomic
     def handle(self, *args, **options):
+        if options.get("enriquecer"):
+            from ..demo import enriquecer
+            return enriquecer(self)
         # También el comando completo toma primero las filas estables, en PK ascendente.
         list(Profesor.objects.select_for_update().filter(
             identificacion__in=[f"DOC-DEMO-{n:03d}" for n in range(1, 7)]

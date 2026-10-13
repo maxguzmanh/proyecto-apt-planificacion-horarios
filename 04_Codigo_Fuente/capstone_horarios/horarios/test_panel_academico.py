@@ -46,7 +46,7 @@ class PanelAcademicoTests(TestCase):
         response = self.respuesta()
         self.assertEqual(response.status_code, 200)
         for texto in ["PROGWEB01", "Programación Web", "Laura Méndez", "Informática",
-                      "05PD G1", "Presencial", "Horas planificadas", "Disponibilidad"]:
+                      "Presencial", "Profesores disponibles", "Disponibilidad"]:
             self.assertContains(response, texto)
         self.assertContains(response, 'form="filtros-planificacion"')
         self.assertTrue(response.context["asignaturas_semestre"])
@@ -64,7 +64,7 @@ class PanelAcademicoTests(TestCase):
         CargaDocente.objects.filter(profesor=self.profesor).delete()
         DisponibilidadProfesor.objects.filter(profesor=self.profesor).delete()
         response = self.respuesta()
-        self.assertContains(response, "Carga docente no registrada")
+        self.assertContains(response, "Sin carga")
         self.assertContains(response, "Disponibilidad no registrada")
         docente = next(d for t in self.panel() for d in t["profesores"] if d["profesor"].pk == self.profesor.pk)
         self.assertIsNone(docente["carga"])
@@ -76,8 +76,8 @@ class PanelAcademicoTests(TestCase):
         carga.horas_asignadas = Decimal("12.50")
         carga.save()
         response = self.respuesta()
-        self.assertContains(response, "12.50 h")
-        self.assertContains(response, "8.50 h")
+        self.assertContains(response, "Carga asignada")
+        self.assertContains(response, "8.5 h")
         self.assertContains(response, "08:00–20:00")
         docentes = [d for t in response.context["asignaturas_semestre"] for d in t["profesores"] if d["profesor"].pk == self.profesor.pk]
         for docente in docentes:
@@ -153,3 +153,56 @@ class PanelAcademicoTests(TestCase):
         response = self.client.get(reverse("planificacion"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["asignaturas_semestre"], [])
+
+    def detalle_docente(self):
+        from urllib.parse import urlencode
+        response=self.respuesta()
+        oferta=OfertaAcademica.objects.get(asignatura__codigo="PROGWEB01")
+        return self.client.get(reverse("detalle_oferta_calendario",args=[oferta.pk])+"?"+response.wsgi_request.GET.urlencode())
+
+    def test_modal_docente_con_datos_reales(self):
+        d=self.detalle_docente().json()
+        self.assertEqual(d["horas_asignadas"],"12.00")
+        self.assertEqual(d["horas_planificadas"],"4")
+        self.assertEqual(d["horas_pendientes"],"8.00")
+        self.assertTrue(d["disponibilidad"]);self.assertTrue(d["ocupaciones"])
+        self.assertEqual(d["grupos"][0]["codigo"],"05PD G1")
+        self.assertEqual(d["modalidad"],"Presencial");self.assertTrue(d["facultades"]);self.assertTrue(d["programas"])
+
+    def test_badge_sin_carga_no_es_cero(self):
+        CargaDocente.objects.filter(profesor=self.profesor).delete()
+        self.assertContains(self.respuesta(),'data-horas=""')
+        self.assertContains(self.respuesta(),'>Sin carga</span>')
+        self.assertIsNone(self.detalle_docente().json()["horas_pendientes"])
+
+    def test_badge_carga_completa_es_cero(self):
+        c=CargaDocente.objects.get(profesor=self.profesor,periodo=self.grupo.periodo,activo=True)
+        c.horas_asignadas=Decimal("4");c.save()
+        self.assertContains(self.respuesta(),'data-horas="0"')
+        self.assertContains(self.respuesta(),'>0 h</span>')
+
+    def test_badge_fraccionario_sin_redondear_a_entero(self):
+        c=CargaDocente.objects.get(profesor=self.profesor,periodo=self.grupo.periodo,activo=True)
+        c.horas_asignadas=Decimal("11.50");c.save()
+        self.assertContains(self.respuesta(),'data-horas="7.5"')
+        self.assertContains(self.respuesta(),'>7.5 h</span>')
+
+    def test_tarjeta_compacta_no_muestra_ficha_permanente(self):
+        html=self.respuesta().content.decode()
+        self.assertNotIn('class="subject-hours"',html)
+        self.assertNotIn('class="subject-availability-list"',html)
+        self.assertNotIn('Profesor asignado',html)
+        self.assertIn('id="docente-modal"',html)
+
+    def test_opciones_docentes_separadas(self):
+        oferta=OfertaAcademica.objects.get(asignatura__codigo="PROGWEB01")
+        otro=Profesor.objects.get(identificacion="DOC-DEMO-002")
+        o=OfertaAcademica.objects.create(asignatura=oferta.asignatura,profesor=otro,periodo=oferta.periodo,modalidad=oferta.modalidad)
+        OfertaGrupo.objects.create(oferta=o,grupo=self.grupo,cupos=10)
+        r=self.respuesta();self.assertContains(r,f'data-oferta-id="{oferta.pk}"');self.assertContains(r,f'data-oferta-id="{o.pk}"')
+
+    def test_evento_y_ocupacion_serializan_tooltip(self):
+        from .presentacion import horarios_con_contexto,evento_con_contexto
+        h=horarios_con_contexto(Horario.objects.filter(oferta__profesor=self.profesor)).first()
+        p=evento_con_contexto(h)["extendedProps"]
+        for key in ["profesor","programas","semestres","grupos","modalidad","sede","aula","dia","hora_inicio","hora_fin"]: self.assertTrue(p[key])

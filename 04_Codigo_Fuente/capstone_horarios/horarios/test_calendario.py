@@ -74,6 +74,7 @@ class CalendarioTests(TestCase):
         self.assertEqual(props["modalidad"], "Presencial")
         self.assertEqual(props["dia"], "LU")
         self.assertEqual(props["hora_inicio"], "08:00:00")
+        self.assertEqual(props["oferta_id"], self.horario.oferta_id)
         self.assertEqual(props["grupos"][0]["codigo"], "05PD G1")
 
     def test_mover_sin_carga_ni_disponibilidad_rechazado(self):

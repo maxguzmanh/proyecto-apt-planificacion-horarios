@@ -65,6 +65,53 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+    const panelDocente = document.querySelector(".academic-panel");
+    const docenteElement = document.getElementById("docente-modal");
+    const docenteModal = docenteElement && window.bootstrap ? new bootstrap.Modal(docenteElement) : null;
+    let versionDocente = 0, ultimoDrag = null;
+    const tooltipsDocentes = new Map(), tooltipsEventos = new Map();
+    function tooltip(nodo, contenido) {
+        if (window.bootstrap && bootstrap.Tooltip) return new bootstrap.Tooltip(nodo, { title: contenido, html: false, trigger: "hover focus", container: "body" });
+        nodo.setAttribute("title", contenido); return null;
+    }
+    function prepararTooltipsDocentes() {
+        tooltipsDocentes.forEach(t => t && t.dispose()); tooltipsDocentes.clear();
+        panelDocente.querySelectorAll(".teacher-compact-card").forEach(card => {
+            tooltipsDocentes.set(card, tooltip(card, card.getAttribute("data-bs-original-title") || card.getAttribute("title") || ""));
+        });
+    }
+    function ocultarTooltips() {
+        tooltipsDocentes.forEach(t => t && t.hide()); tooltipsEventos.forEach(t => t && t.hide());
+    }
+    function lista(id, valores, vacio) {
+        const nodo = document.getElementById(id); nodo.replaceChildren();
+        (valores.length ? valores : [vacio]).forEach(valor => { const li = document.createElement("li"); li.textContent = valor; nodo.appendChild(li); });
+    }
+    function horas(valor, ausencia) { return valor === null ? ausencia : `${Number(valor)} h`; }
+    async function verDocente(card) {
+        if (guardando || !docenteModal || (gesto && gesto.iniciado) || (ultimoDrag && ultimoDrag.card === card && Date.now() - ultimoDrag.fecha < 500)) return;
+        const version = ++versionDocente;
+        limpiarReferencias(); ocultarTooltips();
+        texto("docente-estado", "Consultando detalle…");
+        for (const id of ["profesor","area","asignatura","codigo","programa","facultad","grupos","modalidad","carga","planificadas","pendientes"]) texto(`docente-${id}`, "");
+        lista("docente-disponibilidad", [], "Consultando…"); lista("docente-ocupaciones", [], "Consultando…");
+        docenteModal.show();
+        try {
+            const d = await json(urlContexto(element.dataset.offerBase.replace("/0/", `/${card.dataset.ofertaId}/`)));
+            if (version !== versionDocente) return;
+            texto("docente-area", d.area_academica || "Área académica no registrada");
+            texto("docente-estado", ""); texto("docente-profesor", d.profesor); texto("docente-asignatura", d.asignatura); texto("docente-codigo", d.codigo_asignatura);
+            texto("docente-programa", d.programas.join(", ")); texto("docente-facultad", d.facultades.join(", "));
+            texto("docente-grupos", d.grupos.map(g => g.codigo).join(", ")); texto("docente-modalidad", d.modalidad);
+            texto("docente-carga", horas(d.horas_asignadas, "Carga docente no registrada")); texto("docente-planificadas", horas(d.horas_planificadas, "Sin calcular")); texto("docente-pendientes", horas(d.horas_pendientes, "Sin carga"));
+            lista("docente-disponibilidad", d.disponibilidad.map(b => `${b.nombre_dia} ${b.hora_inicio.slice(0,5)}–${b.hora_fin.slice(0,5)}`), "Disponibilidad no registrada");
+            lista("docente-ocupaciones", d.ocupaciones.map(e => `${e.title} · ${e.extendedProps.sede} · ${nombresDias[dias.indexOf(e.extendedProps.dia)]} ${e.extendedProps.hora_inicio.slice(0,5)}–${e.extendedProps.hora_fin.slice(0,5)}`), "Sin horarios planificados");
+        } catch (error) { if (version === versionDocente) texto("docente-estado", error.message); }
+    }
+    if (docenteModal) docenteElement.addEventListener("hidden.bs.modal", () => { ++versionDocente; });
+    panelDocente.addEventListener("dblclick", function (ev) { const card = ev.target.closest(".teacher-compact-card"); if (!card) return; ev.preventDefault(); ev.stopPropagation(); verDocente(card); });
+    panelDocente.addEventListener("keydown", function (ev) { const card = ev.target.closest(".teacher-compact-card"); if (card && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); verDocente(card); } });
+    prepararTooltipsDocentes();
     function texto(id, valor) { document.getElementById(id).textContent = valor; }
     function hora(fecha) { return [fecha.getHours(), fecha.getMinutes(), fecha.getSeconds()].map(n => String(n).padStart(2, "0")).join(":"); }
     function urlContexto(url) { return `${url}?${element.dataset.filters}`; }
@@ -87,6 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function cerrarMenu() { if (menu) menu.hidden = true; }
     function bloquear(valor) {
         guardando = valor; cerrarMenu();
+        if (valor) ocultarTooltips();
         calendar.setOption("editable", editable && !valor);
         calendar.setOption("eventStartEditable", editable && !valor);
         calendar.setOption("eventDurationEditable", editable && !valor);
@@ -102,9 +150,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!panel) throw new Error();
             document.querySelector(".academic-subject-list").replaceWith(panel);
             panel.querySelectorAll(".academic-subject-card").forEach(card => { card.open = abiertos.includes(card.querySelector(".subject-code").textContent); });
+            prepararTooltipsDocentes();
         } catch (_) { mostrarMensaje("Cambio guardado. Recargue la página para actualizar el panel académico.", "warning"); }
     }
     function confirmarBloque(info, tipo) {
+        limpiarReferencias();
         if (!editable || guardando || (info.event.extendedProps.provisional || info.event.extendedProps.ocupacion_externa) || !moverModal) { info.revert(); return; }
         if (tipo === "resize" && info.event.end - info.event.start < 3600000) {
             info.revert(); mostrarMensaje("La duración mínima de un horario es 1 hora."); return;
@@ -129,7 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
         primero.focus();
     }
     function verDetalle(evento) {
-        cerrarMenu();
+        cerrarMenu(); ocultarTooltips();
         if (!detalleModal) return;
         const props = evento.extendedProps;
         texto("detalle-asignatura", `${props.codigo_asignatura} · ${evento.title}`);
@@ -158,7 +208,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         eventReceive: async function (info) {
             if (!puedeCrear || guardando) { info.revert(); return; }
-            limpiarOcupaciones();
+            limpiarReferencias();
             bloquear(true); info.event.setProp("startEditable", false); info.event.setProp("durationEditable", false);
             const inicio = new Date(info.event.start), fin = new Date(inicio);
             fin.setHours(fin.getHours() + 1);
@@ -175,6 +225,7 @@ document.addEventListener("DOMContentLoaded", function () {
         eventContent: function (info) {
             const p = info.event.extendedProps, content = document.createElement("div");
             content.className = "uniplan-event-content";
+            if (p.disponibilidad_visual) return { domNodes: [] };
             if (p.ocupacion_externa) {
                 for (const valor of ["OCUPADO EN OTRO CONTEXTO", info.event.title, p.sede, `${p.hora_inicio.slice(0, 5)}–${p.hora_fin.slice(0, 5)}`]) {
                     const line = document.createElement("div"); line.textContent = valor; content.appendChild(line);
@@ -200,6 +251,18 @@ document.addEventListener("DOMContentLoaded", function () {
             return { domNodes: [content] };
         },
         eventDidMount: function (info) {
+            const p = info.event.extendedProps;
+            if (p.disponibilidad_visual) {
+                info.el.setAttribute("title", `Fuera de disponibilidad de ${p.profesor}.`);
+                return;
+            }
+            if (!p.provisional) {
+                const contenido = [p.ocupacion_externa ? "OCUPADO EN OTRO CONTEXTO" : "", info.event.title, p.profesor,
+                    `${nombresDias[dias.indexOf(p.dia)]} · ${p.hora_inicio.slice(0,5)}–${p.hora_fin.slice(0,5)}`,
+                    `${(p.programas || p.grupos.map(g => g.programa)).join(", ")} · Semestre ${(p.semestres || []).join(", ")}`,
+                    p.grupos.map(g => g.codigo).join(", "), p.modalidad, `${p.sede} · ${p.aula || "Aula pendiente"}`].filter(Boolean).join("\n");
+                tooltipsEventos.set(info.el, tooltip(info.el, contenido));
+            }
             info.el.setAttribute("tabindex", "0");
             info.el.setAttribute("aria-label", `${info.event.title}. Clic derecho o Mayús F10 para opciones.`);
             info.el.addEventListener("contextmenu", function (ev) { ev.preventDefault(); abrirMenu(info.event, ev.clientX, ev.clientY); });
@@ -209,43 +272,77 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         },
-        eventClick: function (info) { if (!guardando && !info.event.extendedProps.provisional) verDetalle(info.event); },
+        eventWillUnmount: function (info) { const t = tooltipsEventos.get(info.el); if (t) t.dispose(); tooltipsEventos.delete(info.el); },
+        eventDragStart: iniciarReferenciasEvento,
+        eventDragStop: limpiarReferencias,
+        eventResizeStart: iniciarReferenciasEvento,
+        eventResizeStop: limpiarReferencias,
+        eventClick: function (info) { if (!guardando && !info.event.extendedProps.provisional && !info.event.extendedProps.disponibilidad_visual) verDetalle(info.event); },
         eventDrop: function (info) { confirmarBloque(info, "move"); },
         eventResize: function (info) { confirmarBloque(info, "resize"); }
     });
     calendar.render();
     let versionOcupaciones = 0, gesto = null;
     const referencias = [];
-    function limpiarOcupaciones() {
+    function limpiarReferencias() {
         ++versionOcupaciones;
         referencias.splice(0).forEach(evento => evento.remove());
     }
-    async function cargarOcupaciones(ofertaId) {
-        limpiarOcupaciones(); const version = versionOcupaciones;
+    function sombrearDisponibilidad(bloques, profesor) {
+        // Complemento visual dentro de 06:00–22:00; no impide ningún drop.
+        const segundos = valor => { const p = valor.split(":").map(Number); return p[0] * 3600 + p[1] * 60 + (p[2] || 0); };
+        const minimo = 6 * 3600, maximo = 22 * 3600;
+        ["LU", "MA", "MI", "JU", "VI", "SA", "DO"].forEach((dia, offset) => {
+            const disponibles = bloques.filter(b => b.dia === dia).map(b => [Math.max(minimo, segundos(b.hora_inicio)), Math.min(maximo, segundos(b.hora_fin))]).filter(b => b[0] < b[1]).sort((a,b) => a[0] - b[0]);
+            const fecha = new Date(`${element.dataset.referenceWeek}T00:00:00`); fecha.setDate(fecha.getDate() + offset);
+            function gris(inicio, fin) {
+                if (inicio >= fin) return;
+                const start = new Date(fecha), end = new Date(fecha);
+                start.setMilliseconds(inicio * 1000); end.setMilliseconds(fin * 1000);
+                referencias.push(calendar.addEvent({ id: `no-disponible-${versionOcupaciones}-${dia}-${inicio}`, start, end,
+                    display: "background", allDay: false, editable: false, startEditable: false, durationEditable: false,
+                    classNames: ["zona-no-disponible"], extendedProps: { disponibilidad_visual: true, profesor } }));
+            }
+            let hasta = minimo;
+            disponibles.forEach(([inicio, fin]) => { gris(hasta, inicio); hasta = Math.max(hasta, fin); });
+            gris(hasta, maximo);
+        });
+    }
+    function iniciarReferenciasEvento(info) {
+        const p = info.event.extendedProps;
+        if (!editable || guardando || p.provisional || p.ocupacion_externa || p.disponibilidad_visual) return;
+        ocultarTooltips();
+        if (p.oferta_id) return cargarReferencias(p.oferta_id);
+    }
+    function pintarReferencias(datos) {
+        const normales = new Set(calendar.getEvents().filter(e => !e.extendedProps.ocupacion_externa && !e.extendedProps.disponibilidad_visual).map(e => String(e.extendedProps.horario_id || e.id)));
+        datos.ocupaciones.filter(e => !normales.has(String(e.extendedProps.horario_id))).forEach(e => referencias.push(calendar.addEvent(e)));
+        sombrearDisponibilidad(datos.disponibilidad, datos.profesor);
+    }
+    async function cargarReferencias(ofertaId) {
+        limpiarReferencias(); const version = versionOcupaciones;
         try {
             const datos = await json(urlContexto(element.dataset.occupationsBase.replace("/0/", `/${ofertaId}/`)));
             if (version !== versionOcupaciones) return;
-            const normales = new Set(calendar.getEvents().filter(e => !e.extendedProps.ocupacion_externa).map(e => String(e.extendedProps.horario_id || e.id)));
-            datos.filter(e => !normales.has(String(e.extendedProps.horario_id))).forEach(e => referencias.push(calendar.addEvent(e)));
+            pintarReferencias(datos);
         } catch (error) { if (version === versionOcupaciones) mostrarMensaje(error.message); }
     }
     if (puedeCrear) {
         document.querySelector(".academic-panel").addEventListener("pointerdown", function (ev) {
             const card = ev.target.closest(".offer-drag-card");
             if (!card || guardando || (ev.button !== undefined && ev.button !== 0)) return;
-            limpiarOcupaciones(); gesto = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, oferta: card.dataset.ofertaId, iniciado: false };
+            limpiarReferencias(); gesto = { card, id: ev.pointerId, x: ev.clientX, y: ev.clientY, oferta: card.dataset.ofertaId, iniciado: false };
         });
         document.addEventListener("pointermove", function (ev) {
             if (!gesto || ev.pointerId !== gesto.id || gesto.iniciado) return;
-            if (Math.hypot(ev.clientX - gesto.x, ev.clientY - gesto.y) >= 5) { gesto.iniciado = true; cargarOcupaciones(gesto.oferta); }
+            if (Math.hypot(ev.clientX - gesto.x, ev.clientY - gesto.y) >= 5) { gesto.iniciado = true; ultimoDrag = { card: gesto.card, fecha: Date.now() }; ocultarTooltips(); cargarReferencias(gesto.oferta); }
         });
-        for (const nombre of ["pointerup", "pointercancel"]) document.addEventListener(nombre, function () { gesto = null; limpiarOcupaciones(); });
-        window.addEventListener("blur", function () { gesto = null; limpiarOcupaciones(); });
-        document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { gesto = null; limpiarOcupaciones(); } });
-        document.getElementById("filtros-planificacion").addEventListener("change", limpiarOcupaciones);
+        for (const nombre of ["pointerup", "pointercancel"]) document.addEventListener(nombre, function () { if (gesto && gesto.iniciado) ultimoDrag = { card: gesto.card, fecha: Date.now() }; gesto = null; limpiarReferencias(); });
+        document.getElementById("filtros-planificacion").addEventListener("change", limpiarReferencias);
     }
+    window.addEventListener("blur", function () { gesto = null; limpiarReferencias(); });
     document.addEventListener("click", function (ev) { if (menu && !menu.contains(ev.target)) cerrarMenu(); });
-    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") cerrarMenu(); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { gesto = null; limpiarReferencias(); cerrarMenu(); } });
     if (menu) {
         const eliminarOpcion = document.getElementById("context-eliminar-horario");
         if (puedeEliminar && eliminarOpcion) eliminarOpcion.addEventListener("click", function () { if (eventoMenu) abrirEliminar(eventoMenu); });
@@ -271,7 +368,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (editable && moverModal) {
         moverElement.addEventListener("hidden.bs.modal", function () {
-            if (cambio && !enviandoCambio) { cambio.info.revert(); cambio = null; bloquear(false); }
+            if (cambio && !enviandoCambio) { limpiarReferencias(); cambio.info.revert(); cambio = null; bloquear(false); }
         });
         confirmarCambio.addEventListener("click", async function () {
             if (!cambio || enviandoCambio) return;
@@ -288,6 +385,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 cambio = null; moverModal.hide(); mostrarMensaje("Horario actualizado correctamente.", "success"); await refrescar();
             } catch (error) { info.revert(); cambio = null; moverModal.hide(); mostrarMensaje(error.message); calendar.refetchEvents(); }
             finally {
+                limpiarReferencias();
                 enviandoCambio = false; confirmarCambio.disabled = false;
                 moverElement.querySelectorAll("[data-bs-dismiss]").forEach(b => { b.disabled = false; }); bloquear(false);
             }
