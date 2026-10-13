@@ -6,6 +6,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const nombres = ["Centro Tutorial", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
     const rutas = [null, "urlFacultades", "urlProgramas", "urlModalidades", "urlSedes", "urlPeriodos", "urlSemestres"];
     const seleccion = orden.map(id => form.dataset["selected" + id[0].toUpperCase() + id.slice(1)] || "");
+    const ayudaSede = document.getElementById("sede-ayuda");
+    function actualizarAyudaSede() {
+        if (!ayudaSede) return;
+        const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
+        const codigo = modalidad ? modalidad.dataset.codigo : "";
+        const mensajes = {
+            PRE: "Selecciona la sede física donde se realizará la planificación.",
+            VIR: "Campus Virtual seleccionado automáticamente para la modalidad virtual.",
+            HIB: "Modalidad híbrida: selecciona la ubicación correspondiente a esta planificación, ya sea una sede física o Campus Virtual."
+        };
+        // No anunciar una selección automática que todavía no se ha realizado.
+        ayudaSede.textContent = codigo === "VIR" && !selects[4].value ? "" : (mensajes[codigo] || "");
+        ayudaSede.hidden = !ayudaSede.textContent;
+    }
     let version = 0;
     const estado = document.createElement("p");
     estado.className = "form-help mt-2 mb-0";
@@ -16,6 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
             selects[i].replaceChildren(new Option(`Seleccione ${nombres[i]}...`, ""));
             selects[i].disabled = true;
         }
+        actualizarAyudaSede();
     }
     async function cargar(indice, actual = "", solicitud = version) {
         if (!selects.slice(0, indice).every(s => s.value)) return false;
@@ -43,6 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     selects[indice].value = String(virtuales[0].id);
                 }
             }
+            actualizarAyudaSede();
             estado.textContent = datos.length ? "" : `No hay opciones de ${nombres[indice]} para este contexto.`;
             return Boolean(selects[indice].value);
         } catch (_) {

@@ -46,8 +46,10 @@
 
     <a class="app-skip-link" href="#contenido-principal">Ir al contenido</a>
     <aside class="app-sidebar" aria-label="Menú principal">
-        <a class="sidebar-brand" href="{% url 'inicio' %}">UniPlan<span>Planificación académica</span></a>
+        <a class="sidebar-brand" href="{% if portal_profesor %}{% url 'profesor_horario' %}{% else %}{% url 'inicio' %}{% endif %}">UniPlan<span>Planificación académica</span></a>
         <nav class="sidebar-navigation" aria-label="Navegación">
+            {% if portal_profesor %}<a href="{% url 'profesor_horario' %}" class="is-active" aria-current="page">Mi horario</a>
+            {% elif not sidebar_solo_lectura %}
             <a href="{% url 'inicio' %}" {% if request.resolver_match.url_name == 'inicio' %}class="is-active" aria-current="page"{% endif %}>Inicio</a>
             <a href="{% url 'planificacion' %}" {% if request.resolver_match.url_name == 'planificacion' %}class="is-active" aria-current="page"{% endif %}>Planificación</a>
             {% if menu_mantenedores %}
@@ -58,12 +60,13 @@
                 </nav>
             </details>
             {% endif %}
+            {% endif %}
         </nav>
         {% if request.user.is_authenticated %}
         <div class="sidebar-account">
-            <span class="sidebar-account-label">Usuario actual</span>
-            <strong>{{ request.user.username }}</strong>
-            {% if request.user.is_superuser %}<a class="sidebar-technical" href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración técnica ↗</a>{% endif %}
+            {% if not portal_profesor %}<span class="sidebar-account-label">Usuario actual</span>{% endif %}
+            <strong>{% if portal_profesor %}{{ perfil_docente }}{% else %}{{ request.user.username }}{% endif %}</strong>
+            {% if request.user.is_superuser and not portal_profesor %}<a class="sidebar-technical" href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración técnica ↗</a>{% endif %}
             <form method="POST" action="{% url 'logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="sidebar-logout">Cerrar sesión</button>

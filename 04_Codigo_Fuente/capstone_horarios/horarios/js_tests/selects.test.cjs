@@ -19,6 +19,7 @@ function setup(restaurar = false, modalidadCodigo = "PRE", sedeCodigo = "SEDE-AC
         requestSubmit() { submissions++; }
     }
     orden.forEach(id => nodes.set(id, new Node()));
+    nodes.set("sede-ayuda", new Node());
     const form = new Node();
     form.dataset = {};
     orden.forEach((id, i) => {
@@ -89,3 +90,38 @@ test("Híbrida mantiene selección manual de sede",async()=>{const a=setup(true,
 test("Virtual sin código estable no inventa Campus Virtual",async()=>{const a=setup(true,"VIR","OTRA");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"");assert.equal(a.nodes.get("periodo").disabled,true);});
 
 test("Presencial no muestra SEDE-VIR incluso ante respuesta incompatible",async()=>{const a=setup(true,"PRE","SEDE-VIR");await new Promise(r=>setImmediate(r));assert.equal(a.nodes.get("sede").disabled,true);assert.equal(a.nodes.get("sede").options.length,1);});
+
+for (const [codigo, sede, mensaje] of [
+    ["PRE", "SEDE-ACA", "Selecciona la sede física donde se realizará la planificación."],
+    ["VIR", "SEDE-VIR", "Campus Virtual seleccionado automáticamente para la modalidad virtual."],
+    ["HIB", "SEDE-ACA", "Modalidad híbrida: selecciona la ubicación correspondiente a esta planificación, ya sea una sede física o Campus Virtual."]
+]) {
+    test(`ayuda de Sede para ${codigo} al restaurar y cambiar modalidad`, async () => {
+        const app = setup(true, codigo, sede);
+        await new Promise(resolve => setImmediate(resolve));
+        const ayuda = app.nodes.get("sede-ayuda");
+        assert.equal(ayuda.textContent, mensaje);
+        assert.equal(ayuda.hidden, false);
+        await app.nodes.get("modalidad").listeners.change();
+        assert.equal(ayuda.textContent, mensaje);
+        assert.equal(ayuda.hidden, false);
+    });
+}
+test("limpiar contexto elimina ayuda de modalidad anterior", async () => {
+    const app = setup(true, "HIB");
+    await new Promise(resolve => setImmediate(resolve));
+    await app.nodes.get("programa").listeners.change();
+    assert.equal(app.nodes.get("sede-ayuda").textContent, "");
+    assert.equal(app.nodes.get("sede-ayuda").hidden, true);
+});
+test("Virtual sin Campus no anuncia selección automática", async () => {
+    const app = setup(true, "VIR", "OTRA");
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.nodes.get("sede-ayuda").textContent, "");
+    assert.equal(app.nodes.get("sede-ayuda").hidden, true);
+});
+test("Sede tiene ayuda accesible discreta debajo del selector", () => {
+    const html = fs.readFileSync(path.join(__dirname, "../templates/horarios/planificacion.html"), "utf8");
+    assert.match(html, /id="sede"[^>]*aria-describedby="sede-ayuda"/);
+    assert.match(html, /<p id="sede-ayuda" class="form-help mt-1 mb-0" aria-live="polite" hidden>/);
+});

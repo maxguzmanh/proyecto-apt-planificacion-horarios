@@ -1,8 +1,12 @@
 from django.urls import path
 
-from . import views
+from . import views, profesor_views
 
 urlpatterns = [
+    path("profesor/", profesor_views.profesor_inicio, name="profesor_inicio"),
+    path("profesor/horario/", profesor_views.profesor_horario, name="profesor_horario"),
+    path("profesor/calendario/eventos/", profesor_views.profesor_eventos, name="profesor_eventos"),
+    path("profesor/calendario/horarios/<int:horario_id>/detalle/", profesor_views.profesor_detalle, name="profesor_detalle"),
     path("planificacion/calendario/ofertas/<int:oferta_id>/ocupaciones/", views.ocupaciones_oferta, name="ocupaciones_oferta"),
     path("planificacion/calendario/eliminar/", views.eliminar_horario_calendario, name="eliminar_horario_calendario"),
     path("planificacion/calendario/redimensionar/", views.redimensionar_horario, name="redimensionar_horario"),

@@ -98,8 +98,12 @@ def agregar_errores_formulario(form, error, candidato=None):
 
 @login_required
 def inicio(request):
-    if not request.user.has_perm("horarios.view_horario") or not any(request.user.has_perm(f"horarios.{accion}_horario") for accion in ("add","change","delete")):
-        raise PermissionDenied
+    from usuarios.roles import puede_dashboard, destino_usuario
+    if not puede_dashboard(request.user):
+        destino = destino_usuario(request.user)
+        if destino != "acceso_no_configurado": return redirect(destino)
+        from usuarios.views import acceso_no_configurado
+        return acceso_no_configurado(request)
     from .dashboard import resumen_dashboard
     periodos=list(PeriodoAcademico.objects.filter(activo=True).order_by("-fecha_inicio","-pk"))
     periodo_id=request.GET.get("periodo")

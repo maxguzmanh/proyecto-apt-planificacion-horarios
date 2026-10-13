@@ -1,61 +1,138 @@
 {% extends "horarios/base.html" %}
 
-{% block title %}{{ titulo }} | Mantenedores{% endblock %}
+{% block title %}
+{{ titulo }} | Mantenedores
+{% endblock %}
+
 
 {% block content %}
+
 <div class="app-page">
+
+
     <div class="workspace-header">
-        <div>
-            <div class="workspace-eyebrow">MANTENEDORES</div>
-            <h1 class="workspace-title">{{ titulo }}</h1>
-            <p class="workspace-description">
-                Confirme la eliminación del registro seleccionado.
-            </p>
-        </div>
-        <a href="{% url listado_url %}" class="btn btn-outline-secondary">Volver</a>
+
+        {% include "horarios/componentes/cabecera.html" with icono="mantenedores" titulo=titulo descripcion="Confirme la eliminación del registro seleccionado." only %}
+
+
+        <a
+            href="{% url listado_url %}"
+            class="btn btn-outline-secondary"
+        >
+            Volver
+        </a>
+
     </div>
 
+
     <section class="planning-panel">
+
         <div class="panel-heading-enterprise">
+
             <div>
-                <span class="panel-kicker">CONFIRMACIÓN</span>
-                <h2>Información del registro: {{ singular }}</h2>
+
+                <span class="panel-kicker">
+                    CONFIRMACIÓN
+                </span>
+
+                <h2>
+                    Información del registro
+                </h2>
+
             </div>
+
         </div>
+
 
         <div class="planning-form">
+
+
             <div class="alert alert-danger mb-4">
-                <strong>¿Desea eliminar este registro?</strong>
+
+                <strong>
+                    ¿Desea eliminar este registro?
+                </strong>
+
                 <div class="mt-1">
-                    Esta acción no se puede deshacer. Si el registro posee
-                    relaciones protegidas, el sistema impedirá su eliminación.
+                    Si posee información asociada,
+                    el sistema impedirá su eliminación.
                 </div>
+
             </div>
 
-            <dl class="row g-4">
-                {% for etiqueta, valor in detalles %}
-                    <div class="col-md-6">
-                        <dt class="text-secondary small mb-1">{{ etiqueta }}</dt>
-                        <dd class="fw-semibold mb-0">{{ valor }}</dd>
-                    </div>
-                {% endfor %}
-            </dl>
 
-            <form method="POST" class="mt-4">
-                {% csrf_token %}
-                <div class="planning-actions">
-                    <div class="form-help">
-                        Revise la información antes de confirmar la eliminación.
+            <div class="row g-4">
+
+                {% for etiqueta, valor in detalles %}
+
+                    <div class="col-lg-4 col-md-6">
+
+                        <div
+                            class="
+                                text-secondary
+                                small
+                                mb-1
+                            "
+                        >
+                            {{ etiqueta }}
+                        </div>
+
+                        <div class="fw-semibold">
+                            {{ valor }}
+                        </div>
+
                     </div>
+
+                {% endfor %}
+
+            </div>
+
+
+            <form
+                method="POST"
+                class="mt-4"
+            >
+
+                {% csrf_token %}
+
+
+                <div class="planning-actions">
+
+                    <div class="form-help">
+                        Los registros utilizados por
+                        otros datos deben marcarse
+                        como inactivos en lugar
+                        de eliminarse.
+                    </div>
+
+
                     <div class="d-flex gap-2">
-                        <a href="{% url listado_url %}" class="btn btn-outline-secondary">
+
+                        <a
+                            href="{% url listado_url %}"
+                            class="btn btn-outline-secondary"
+                        >
                             Cancelar
                         </a>
-                        <button type="submit" class="btn btn-danger">Eliminar</button>
+
+
+                        <button
+                            type="submit"
+                            class="btn btn-danger"
+                        >
+                            Eliminar registro
+                        </button>
+
                     </div>
+
                 </div>
+
             </form>
+
         </div>
+
     </section>
+
 </div>
+
 {% endblock %}

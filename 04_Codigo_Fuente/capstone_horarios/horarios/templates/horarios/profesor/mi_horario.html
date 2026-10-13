@@ -1,0 +1,18 @@
+{% extends "horarios/base.html" %}
+{% load static %}
+{% block title %}Mi horario | UniPlan{% endblock %}
+{% block content %}
+<div class="app-page">
+ <div class="workspace-header">{% include "horarios/componentes/cabecera.html" with icono="profesor" titulo="Mi horario" descripcion=perfil_docente only %}
+  <div class="enterprise-field"><label for="profesor-periodo">Periodo Académico</label><select id="profesor-periodo" class="form-select">{% for p in periodos %}<option value="{{ p.pk }}" {% if periodo.pk == p.pk %}selected{% endif %}>{{ p.nombre }}</option>{% empty %}<option value="">Sin periodos disponibles</option>{% endfor %}</select></div>
+ </div>
+ <section class="planning-panel"><div class="panel-heading-enterprise"><div><span class="panel-kicker">CONSULTA</span><h2>Horario semanal</h2></div></div><div class="card-body">
+  <div id="profesor-calendar-message" class="alert" role="status" aria-live="polite" hidden></div>
+  <div id="profesor-empty" class="alert alert-info" {% if periodo %}hidden{% endif %}>No tiene horarios activos registrados para este periodo.</div>
+  <div class="uniplan-calendar-scroll"><div id="profesor-calendar" data-events-url="{% url 'profesor_eventos' %}" data-detail-base="{% url 'profesor_detalle' 0 %}" data-reference-week="{{ semana_referencia }}"></div></div>
+  <noscript><p class="text-secondary">Active JavaScript para consultar el calendario.</p></noscript>
+ </div></section>
+</div>
+{% include "horarios/modal_detalle_horario.html" %}
+{% endblock %}
+{% block scripts %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.21/index.global.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.21/locales/es.global.min.js"></script><script src="{% static 'horarios/js/profesor_calendario.js' %}"></script>{% endblock %}

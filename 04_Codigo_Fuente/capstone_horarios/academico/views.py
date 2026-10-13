@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import (
     login_required,
     permission_required,
 )
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
 from django.db.models import Q, CharField, TextField, ForeignKey
@@ -981,6 +982,10 @@ def eliminar_generico(
 def mantenedores(
     request,
 ):
+
+    from usuarios.roles import puede_dashboard, puede_mantenedores
+    if not puede_dashboard(request.user) and not puede_mantenedores(request.user):
+        raise PermissionDenied
 
     return render(
         request,

@@ -4,10 +4,34 @@
 {% block content %}
 <div class="app-page planning-workspace">
     <div class="workspace-header">
-        <div>
-            <div class="workspace-eyebrow">PLANIFICACIÓN DOCENTE</div>
-            <h1 class="workspace-title">Espacio de planificación</h1>
-            <p class="workspace-description">Seleccione el contexto académico y consulte la programación semanal.</p>
+        {% include "horarios/componentes/cabecera.html" with icono="calendario" titulo="Espacio de planificación" descripcion="Seleccione el contexto académico y consulte la programación semanal." only %}
+        <div class="page-heading-actions">
+                        <!-- EXPORTAR -->
+
+                        {% if perms.horarios.view_horario %}
+
+                            {% if sede %}
+
+                                <a
+                                    href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}"
+                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                </a>
+
+                            {% else %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
+                                    disabled
+
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                </button>
+
+                            {% endif %}
+                        {% endif %}
         </div>
     </div>
 
@@ -45,7 +69,8 @@
                 </div>
                 <div class="enterprise-field">
                     <label for="sede">Sede</label>
-                    <select id="sede" name="sede" class="form-select" required disabled><option value="">Seleccione una sede...</option></select>
+                    <select id="sede" name="sede" class="form-select" required disabled aria-describedby="sede-ayuda"><option value="">Seleccione una sede...</option></select>
+                    <p id="sede-ayuda" class="form-help mt-1 mb-0" aria-live="polite" hidden></p>
                 </div>
                 <div class="enterprise-field">
                     <label for="periodo">Periodo Académico</label>
@@ -169,39 +194,7 @@
                          ACCIONES
                          ================================================== -->
 
-                    <div class="d-flex gap-2">
 
-
-                        <!-- EXPORTAR -->
-
-                        {% if perms.horarios.view_horario %}
-
-                            {% if sede %}
-
-                                <a
-                                    href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}"
-                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </a>
-
-                            {% else %}
-
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
-                                    disabled
-
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </button>
-
-                            {% endif %}
-
-                        {% endif %}
-
-
-                    </div>
 
                 </div>
 

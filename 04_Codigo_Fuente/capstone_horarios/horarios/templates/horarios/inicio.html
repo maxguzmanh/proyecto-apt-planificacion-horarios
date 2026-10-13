@@ -4,7 +4,7 @@
 {% block content %}
 <div class="app-page dashboard-page">
  <header class="workspace-header dashboard-header">
-  <div><div class="workspace-eyebrow">PLANIFICACIÓN DOCENTE</div><h1 class="workspace-title">Panel principal</h1><p class="workspace-description">Resumen operativo de la planificación académica.</p></div>
+  {% include "horarios/componentes/cabecera.html" with icono="dashboard" titulo="Panel principal" descripcion="Resumen operativo de la planificación académica." only %}
   <form method="GET" class="dashboard-period"><label for="dashboard-periodo">Periodo académico</label><div class="dashboard-period-controls"><select id="dashboard-periodo" name="periodo" class="form-select">{% for p in periodos %}<option value="{{ p.pk }}" {% if periodo.pk == p.pk %}selected{% endif %}>{{ p.nombre }}</option>{% empty %}<option>No hay periodos activos</option>{% endfor %}</select>{% if periodos %}<button type="submit" class="btn btn-outline-primary">Consultar</button>{% endif %}</div></form>
  </header>
  <div class="dashboard-global-summary">

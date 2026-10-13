@@ -1,10 +1,12 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
+from django.contrib.auth.urls import urlpatterns as rutas_django
+from .views import UniPlanLoginView
 
 urlpatterns = [
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="usuarios/login.html"),
+        UniPlanLoginView.as_view(),
         name="login",
     ),
     path(
@@ -13,3 +15,6 @@ urlpatterns = [
         name="logout",
     ),
 ]
+
+# Conservar las rutas Django de contraseña/restablecimiento existentes.
+urlpatterns += [ruta for ruta in rutas_django if ruta.name not in ("login", "logout")]
