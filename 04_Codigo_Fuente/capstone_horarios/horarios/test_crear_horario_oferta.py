@@ -89,7 +89,7 @@ class CrearHorarioOfertaTests(TestCase):
         oferta = OfertaAcademica.objects.create(asignatura=self.oferta.asignatura,
             profesor=Profesor.objects.get(identificacion="DOC-DEMO-002"), periodo=self.oferta.periodo, modalidad=self.oferta.modalidad)
         OfertaGrupo.objects.create(oferta=oferta, grupo=grupo, cupos=10)
-        Horario.objects.create(oferta=oferta, aula=self.aula, dia="DO", hora_inicio=time(12), hora_fin=time(14))
+        Horario.objects.create(oferta=oferta, sede=self.aula.sede, aula=self.aula, dia="DO", hora_inicio=time(12), hora_fin=time(14))
         cantidad = Horario.objects.count()
         response = self.crear(dia="DO", hora_inicio="12:00", hora_fin="14:00")
         self.assert_rechazado(response, cantidad)
@@ -121,8 +121,8 @@ class CrearHorarioOfertaTests(TestCase):
         response = self.client.get(reverse("planificacion"), self.filtros)
         self.assertContains(response, f'data-oferta-id="{self.oferta.pk}"')
         self.assertContains(response, "Arrastre esta tarjeta al calendario")
-        self.assertContains(response, 'id="crear-horario-modal"')
-        self.assertContains(response, 'name="hora_fin"')
+        self.assertNotContains(response, 'id="crear-horario-modal"')
+        self.assertContains(response, "calendario.js")
 
     def test_asignatura_sin_oferta_no_arrastrable(self):
         asignatura = Asignatura.objects.create(codigo="SIN-OFERTA-DRAG", nombre="Asignatura sin oferta")
@@ -157,16 +157,16 @@ class CrearHorarioOfertaTests(TestCase):
         self.assertEqual(calcular_horas_pendientes(self.oferta.profesor, self.oferta.periodo), antes - Decimal("2"))
         self.assertEqual(Decimal(self.detalle().json()["horas_pendientes"]), antes - Decimal("2"))
 
-    def test_ausencia_carga_no_bloquea(self):
+    def test_ausencia_carga_rechazada(self):
         CargaDocente.objects.all().delete()
-        self.assertEqual(self.crear().status_code, 201)
+        self.assertEqual(self.crear().status_code, 400)
         detalle = self.detalle().json()
         self.assertIsNone(detalle["horas_asignadas"])
         self.assertIsNone(detalle["horas_pendientes"])
 
-    def test_ausencia_disponibilidad_no_bloquea(self):
+    def test_ausencia_disponibilidad_rechazada(self):
         DisponibilidadProfesor.objects.all().delete()
-        self.assertEqual(self.crear().status_code, 201)
+        self.assertEqual(self.crear().status_code, 400)
         self.assertEqual(self.detalle().json()["disponibilidad"], [])
 
     def test_post_csrf_y_hora_final_obligatoria(self):
@@ -218,7 +218,7 @@ class CrearHorarioOfertaTests(TestCase):
         self.assertContains(response, 'class="subject-offer-option offer-drag-card"')
         self.assertNotContains(response, "offer-drag-handle")
         self.assertContains(response, "Tarjeta arrastrable.")
-        self.assertContains(response, "Ajustar hora final (opcional)")
+        self.assertContains(response, "calendar-context-menu")
         self.assertContains(response, 'id="mover-horario-modal"')
         self.assertContains(response, "¿Está seguro de realizar los cambios?")
         self.assertContains(response, "Confirmar cambios")
@@ -228,6 +228,6 @@ class CrearHorarioOfertaTests(TestCase):
         usuario.user_permissions.add(Permission.objects.get(codename="view_horario"), Permission.objects.get(codename="add_horario"))
         self.client.force_login(usuario)
         response = self.client.get(reverse("planificacion"), self.filtros)
-        self.assertContains(response, 'id="crear-horario-modal"')
+        self.assertNotContains(response, 'id="crear-horario-modal"')
         self.assertNotContains(response, 'id="mover-horario-modal"')
         self.assertContains(response, " offer-drag-card")

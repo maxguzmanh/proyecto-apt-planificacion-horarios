@@ -1,4 +1,5 @@
 from django import forms
+from django.urls import reverse
 
 from academico.models import (
     Asignatura,
@@ -31,6 +32,7 @@ class HorarioForm(forms.ModelForm):
 
         fields = [
             "oferta",
+            "sede",
             "aula",
             "dia",
             "hora_inicio",
@@ -130,21 +132,21 @@ class HorarioForm(forms.ModelForm):
         # AULAS
         # ==================================================
 
-        aulas = Aula.objects.filter(
-            activo=True,
-        )
+        self.fields["sede"].queryset = Sede.objects.filter(activo=True).select_related("centro_tutorial")
+        self.fields["sede"].widget.attrs["class"] = "form-select"
+        sede_seleccionada = self.data.get(self.add_prefix("sede")) if self.is_bound else (
+            getattr(sede, "pk", sede) or self.initial.get("sede") or self.instance.sede_id)
+        if sede and not self.is_bound:
+            self.initial["sede"] = getattr(sede, "pk", sede)
+        try:
+            self.fields["aula"].queryset = Aula.objects.filter(sede_id=int(sede_seleccionada), activo=True).select_related("sede").order_by("nombre")
+        except (TypeError, ValueError):
+            self.fields["aula"].queryset = Aula.objects.none()
+        self.fields["aula"].empty_label = "Aula pendiente"
+        self.fields["aula"].widget.attrs["data-url-aulas"] = reverse("cargar_aulas")
 
-        if sede:
-
-            aulas = aulas.filter(
-                sede=sede,
-            )
-
-        self.fields["aula"].queryset = aulas.select_related(
-            "sede",
-        ).order_by(
-            "nombre",
-        )
+    class Media:
+        js = ["horarios/js/admin_aulas.js"]
 
 
 # ==========================================================
@@ -268,6 +270,7 @@ class NuevaAsignacionForm(forms.Form):
 
     aula = forms.ModelChoiceField(
         queryset=Aula.objects.none(),
+        required=False,
         label="Aula",
         empty_label="Seleccione un aula...",
         widget=forms.Select(
@@ -600,7 +603,17 @@ class MoverHorarioForm(forms.Form):
 
 class CrearHorarioOfertaForm(forms.Form):
     oferta_id = forms.IntegerField(min_value=1)
-    aula_id = forms.IntegerField(min_value=1)
+    aula_id = forms.IntegerField(min_value=1, required=False)
     dia = forms.ChoiceField(choices=Horario.DIAS)
     hora_inicio = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
     hora_fin = forms.TimeField(input_formats=["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"])
+
+
+class AsignarAulaHorarioForm(forms.Form):
+    horario_id = forms.IntegerField(min_value=1)
+    aula_id = forms.IntegerField(min_value=1)
+
+
+class HorarioAdminForm(HorarioForm):
+    class Meta(HorarioForm.Meta):
+        fields = "__all__"

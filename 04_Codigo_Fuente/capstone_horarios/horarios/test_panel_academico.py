@@ -115,7 +115,9 @@ class PanelAcademicoTests(TestCase):
         self.assertEqual(tarjeta["profesores"][0]["horas_planificadas"], Decimal("2"))
 
     def test_oferta_inactiva_y_bloques_inactivos_no_se_muestran(self):
-        OfertaAcademica.objects.filter(asignatura__codigo="PROGWEB01").update(activo=False)
+        oferta = OfertaAcademica.objects.get(asignatura__codigo="PROGWEB01")
+        oferta.activo = False
+        oferta.save()
         tarjeta = next(t for t in self.panel() if t["plan"].asignatura.codigo == "PROGWEB01")
         self.assertEqual(tarjeta["profesores"], [])
         DisponibilidadProfesor.objects.filter(profesor=self.profesor).update(activo=False)

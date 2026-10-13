@@ -3,6 +3,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("planificacion/calendario/redimensionar/", views.redimensionar_horario, name="redimensionar_horario"),
+    path("planificacion/calendario/asignar-aula/", views.asignar_aula_horario, name="asignar_aula_horario"),
+    path("planificacion/calendario/horarios/<int:horario_id>/aulas/", views.aulas_horario_calendario, name="aulas_horario_calendario"),
     path("ajax/modalidades/", views.cargar_modalidades, name="cargar_modalidades"),
     path("planificacion/calendario/ofertas/<int:oferta_id>/", views.detalle_oferta_calendario, name="detalle_oferta_calendario"),
     path("planificacion/calendario/crear/", views.crear_horario_oferta, name="crear_horario_oferta"),

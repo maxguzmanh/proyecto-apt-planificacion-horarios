@@ -104,10 +104,12 @@
                                         data-profesor="{{ docente.profesor }}" data-modalidad="{{ oferta.modalidad.nombre }}"
                                         data-grupos="{% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}"
                                         {% endif %}>
-                                        <div class="small fw-semibold">{{ docente.profesor }}</div>
+                                        <div class="small fw-semibold">{{ item.plan.asignatura.nombre }}</div>
+                                        <div class="small mt-1">{{ docente.profesor }}</div>
                                         <p class="small text-secondary mb-2">{{ oferta.modalidad.nombre }} · {% for grupo in oferta.grupos_contexto %}{{ grupo.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
                                         {% if perms.horarios.add_horario and oferta.profesor.activo %}
-                                        <span class="offer-drag-hint">⠿ Arrastre esta tarjeta al calendario</span>
+                                        <span class="small">Carga: {% if docente.carga %}{{ docente.carga.horas_asignadas|floatformat:"2" }} h{% else %}Sin registrar{% endif %} · Pendientes: {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|floatformat:"2" }} h{% else %}Sin calcular{% endif %}</span>
+                                        <span class="offer-drag-hint">⠿ Arrastre esta tarjeta al calendario · 1 hora</span>
                                         {% elif not oferta.profesor.activo %}<span class="subject-missing-data">Oferta no disponible</span>{% endif %}
                                     </div>
                                     {% endfor %}
@@ -285,6 +287,9 @@
                          data-events-url="{% url 'eventos_calendario' %}"
                          data-move-url="{% url 'mover_horario' %}"
                          data-create-url="{% url 'crear_horario_oferta' %}"
+                         data-resize-url="{% url 'redimensionar_horario' %}"
+                         data-assign-url="{% url 'asignar_aula_horario' %}"
+                         data-aulas-base="{% url 'aulas_horario_calendario' 0 %}"
                          data-offer-base="{% url 'detalle_oferta_calendario' 0 %}"
                          data-can-create="{{ perms.horarios.add_horario|yesno:'true,false' }}"
                          data-filters="{{ request.GET.urlencode }}"
@@ -303,9 +308,14 @@
 </div>
 {% if filtros_completos and perms.horarios.change_horario %}
 {% include "horarios/modal_mover_horario.html" %}
+{% include "horarios/modal_aula_horario.html" %}
 {% endif %}
-{% if filtros_completos and perms.horarios.add_horario %}
-{% include "horarios/modal_crear_horario.html" %}
+{% if filtros_completos %}
+{% include "horarios/modal_detalle_horario.html" %}
+<div id="calendar-context-menu" class="calendar-context-menu" role="menu" aria-label="Opciones del horario" hidden>
+    <button id="context-asignar-aula" type="button" role="menuitem" {% if not perms.horarios.change_horario %}hidden{% endif %}>Asignar aula</button>
+    <button id="context-ver-detalle" type="button" role="menuitem">Ver detalle</button>
+</div>
 {% endif %}
 {% endblock %}
 {% block scripts %}

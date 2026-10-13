@@ -76,17 +76,15 @@ class CalendarioTests(TestCase):
         self.assertEqual(props["hora_inicio"], "08:00:00")
         self.assertEqual(props["grupos"][0]["codigo"], "05PD G1")
 
-    def test_mover_valido_sin_carga_ni_disponibilidad(self):
+    def test_mover_sin_carga_ni_disponibilidad_rechazado(self):
         CargaDocente.objects.all().delete()
         DisponibilidadProfesor.objects.all().delete()
-        cantidades = (OfertaAcademica.objects.count(), Grupo.objects.count(), Horario.objects.count())
+        cantidad = Horario.objects.count()
         response = self.mover()
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["ok"])
-        self.horario.refresh_from_db()
-        self.assertEqual(self.horario.dia, "JU")
-        self.assertEqual(response.json()["event"]["start"], "2000-01-06T08:00:00")
-        self.assertEqual(cantidades, (OfertaAcademica.objects.count(), Grupo.objects.count(), Horario.objects.count()))
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("disponibilidad", str(response.json()["errors"]).lower())
+        self.comprobar_sin_cambios()
+        self.assertEqual(Horario.objects.count(), cantidad)
 
     def test_conflicto_profesor_no_modifica_registro(self):
         blocker = Horario.objects.get(oferta__asignatura__codigo="ARQ01")
@@ -103,7 +101,7 @@ class CalendarioTests(TestCase):
             profesor=Profesor.objects.get(identificacion="DOC-DEMO-002"), periodo=self.grupo.periodo,
             modalidad=self.horario.oferta.modalidad)
         OfertaGrupo.objects.create(oferta=oferta, grupo=grupo, cupos=10)
-        Horario.objects.create(oferta=oferta, aula=self.horario.aula, dia="DO", hora_inicio=time(12), hora_fin=time(14))
+        Horario.objects.create(oferta=oferta, sede=self.horario.sede, aula=self.horario.aula, dia="DO", hora_inicio=time(12), hora_fin=time(14))
         response = self.mover("DO", "12:00:00", "14:00:00")
         self.assertEqual(response.status_code, 400)
         self.assertIn("El aula", response.json()["errors"]["aula"][0])

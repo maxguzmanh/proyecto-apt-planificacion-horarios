@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from academico.models import (
-    Asignatura, Aula, CargaDocente, CentroTutorial, Facultad, Modalidad,
+    Asignatura, Aula, CargaDocente, CentroTutorial, Facultad, Modalidad, DisponibilidadProfesor,
     PeriodoAcademico, Profesor, ProgramaAcademico, Sede, Semestre,
 )
 from .models import Grupo, Horario, OfertaAcademica, OfertaGrupo
@@ -33,21 +33,30 @@ class CalculosDocentesTests(TestCase):
 
     def horario(self, inicio=time(8), fin=time(10), dia="LU", activo=True,
                 oferta_activa=True, periodo=None, profesor=None):
+        profesor = profesor or self.profesor
+        periodo = periodo or self.periodo
+        CargaDocente.objects.get_or_create(profesor=profesor, periodo=periodo, activo=True, defaults={"horas_asignadas": 48})
+        for codigo, _ in Horario.DIAS:
+            DisponibilidadProfesor.objects.get_or_create(profesor=profesor, periodo=periodo, dia=codigo,
+                hora_inicio=time(0), hora_fin=time.max, defaults={"activo": True})
         oferta = OfertaAcademica(
             asignatura=self.asignatura, profesor=profesor or self.profesor,
             periodo=periodo or self.periodo, modalidad=self.modalidad, activo=oferta_activa,
         )
         oferta.full_clean()
         oferta.save()
-        horario = Horario(oferta=oferta, aula=self.aula, dia=dia,
+        horario = Horario(oferta=oferta, sede=self.aula.sede, aula=self.aula, dia=dia,
                           hora_inicio=inicio, hora_fin=fin, activo=activo)
         horario.full_clean()
         horario.save()
         return horario
 
     def carga(self, horas="12.00", activo=True):
-        carga = CargaDocente(profesor=self.profesor, periodo=self.periodo,
-                            horas_asignadas=Decimal(horas), activo=activo)
+        carga = CargaDocente.objects.filter(profesor=self.profesor, periodo=self.periodo, activo=True).first() if activo else None
+        if carga is None:
+            carga = CargaDocente(profesor=self.profesor, periodo=self.periodo)
+        carga.horas_asignadas = Decimal(horas)
+        carga.activo = activo
         carga.full_clean()
         carga.save()
         return carga
@@ -58,8 +67,8 @@ class CalculosDocentesTests(TestCase):
     def test_varios_horarios_y_fracciones(self):
         self.horario()
         self.horario(time(10), time(11, 30))
-        self.horario(time(8), time(8, 30), dia="MA")
-        self.assertEqual(calcular_horas_planificadas(self.profesor, self.periodo), Decimal("4"))
+        self.horario(time(8), time(9, 30), dia="MA")
+        self.assertEqual(calcular_horas_planificadas(self.profesor, self.periodo), Decimal("5"))
 
     def test_periodos_distintos(self):
         self.horario()
@@ -97,6 +106,7 @@ class CalculosDocentesTests(TestCase):
 
     def test_sin_carga_activa(self):
         self.horario()
+        CargaDocente.objects.filter(profesor=self.profesor, periodo=self.periodo).delete()
         self.assertIsNone(calcular_horas_pendientes(self.profesor, self.periodo))
         self.carga(activo=False)
         self.assertIsNone(obtener_carga_activa(self.profesor, self.periodo))
@@ -109,9 +119,9 @@ class CalculosDocentesTests(TestCase):
         carga.save()
         self.assertIsNone(calcular_horas_pendientes(self.profesor, self.periodo))
 
-    def test_carga_cero_y_saldo_negativo_no_bloquean_horario(self):
-        self.carga("0.00")
+    def test_saldo_negativo_existente_se_muestra(self):
         self.horario()
+        self.carga("0.00")
         self.assertEqual(calcular_horas_pendientes(self.profesor, self.periodo), Decimal("-2"))
 
     def test_acepta_identificadores(self):
@@ -121,16 +131,16 @@ class CalculosDocentesTests(TestCase):
         self.assertEqual(calcular_horas_pendientes(self.profesor.pk, self.periodo.pk), Decimal("10"))
 
     def test_no_redondea_cada_duracion(self):
-        self.horario(time(8), time(8, 20))
-        self.horario(time(8, 20), time(8, 40))
-        self.horario(time(8, 40), time(9))
-        self.assertEqual(calcular_horas_planificadas(self.profesor, self.periodo), Decimal("1"))
+        self.horario(time(8), time(9, 20))
+        self.horario(time(9, 20), time(10, 40))
+        self.horario(time(10, 40), time(12))
+        self.assertEqual(calcular_horas_planificadas(self.profesor, self.periodo), Decimal("4"))
 
     def test_conserva_segundos_y_microsegundos(self):
-        self.horario(time(8), time(8, 0, 1, 500000))
+        self.horario(time(8), time(9, 0, 1, 500000))
         self.assertEqual(
             calcular_horas_planificadas(self.profesor, self.periodo),
-            Decimal("1500000") / Decimal("3600000000"),
+            Decimal("3601500000") / Decimal("3600000000"),
         )
 
 

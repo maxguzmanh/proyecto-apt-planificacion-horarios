@@ -2,7 +2,7 @@
 from datetime import date, datetime, timedelta
 
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, F
+from django.db.models import Prefetch, F, Q
 from django.shortcuts import get_object_or_404
 
 from academico.models import CentroTutorial, Facultad, PeriodoAcademico, ProgramaAcademico, ProgramaCentroTutorial, Sede, Semestre, PlanEstudioAsignatura, Aula, Modalidad
@@ -49,12 +49,12 @@ def resolver_contexto_calendario(parametros):
 def horarios_del_contexto(centro, facultad, programa, modalidad, periodo, semestre, sede):
     horarios = Horario.objects.filter(
         activo=True, oferta__activo=True, oferta__periodo=periodo, oferta__modalidad=modalidad,
-        aula__sede=sede,
         oferta__grupos__centro_tutorial=centro, oferta__grupos__programa=programa,
         oferta__grupos__semestre=semestre, oferta__grupos__periodo=periodo, oferta__grupos__activo=True,
     )
+    horarios = horarios.filter(sede=sede)
     return horarios.select_related(
-        "oferta__asignatura", "oferta__profesor", "oferta__periodo", "oferta__modalidad", "aula__sede",
+        "oferta__asignatura", "oferta__profesor", "oferta__periodo", "oferta__modalidad", "aula__sede", "sede",
     ).prefetch_related(Prefetch("oferta__grupos", queryset=Grupo.objects.select_related("programa"))).distinct().order_by("dia", "hora_inicio", "pk")
 
 
@@ -63,9 +63,7 @@ def serializar_evento(horario):
     offset = [codigo for codigo, _ in Horario.DIAS].index(horario.dia)
     fecha = SEMANA_REFERENCIA + timedelta(days=offset)
     modalidad = horario.oferta.modalidad
-    clase = "evento-transversal" if len(grupos) > 1 else {
-        "VIR": "evento-virtual", "HIB": "evento-hibrida",
-    }.get(modalidad.codigo.strip().upper(), "evento-presencial")
+    clase = "evento-completo" if horario.aula_id else "evento-pendiente"
     return {
         "id": str(horario.pk), "title": horario.oferta.asignatura.nombre,
         "start": datetime.combine(fecha, horario.hora_inicio).isoformat(),
@@ -77,7 +75,9 @@ def serializar_evento(horario):
             "codigo_asignatura": horario.oferta.asignatura.codigo,
             "profesor": str(horario.oferta.profesor),
             "grupos": [{"id": g.pk, "codigo": g.codigo, "programa": g.programa.nombre} for g in grupos],
-            "aula": horario.aula.nombre, "modalidad": modalidad.nombre,
+            "aula": horario.aula.nombre if horario.aula_id else "Aula pendiente",
+            "aula_id": horario.aula_id, "aula_pendiente": horario.aula_id is None,
+            "sede_id": horario.sede_id, "sede": horario.sede.nombre, "modalidad": modalidad.nombre,
             "dia": horario.dia, "hora_inicio": horario.hora_inicio.isoformat(),
             "hora_fin": horario.hora_fin.isoformat(),
         },

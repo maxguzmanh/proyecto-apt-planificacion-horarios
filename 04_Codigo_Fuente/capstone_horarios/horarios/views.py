@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
@@ -31,8 +31,8 @@ from academico.models import (
 )
 
 from .services import (obtener_panel_academico, obtener_resumen_docente,
-    calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes)
-from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm
+    calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes, operacion_planificacion)
+from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm, AsignarAulaHorarioForm
 from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
 from .models import (
     Grupo,
@@ -608,6 +608,7 @@ def nueva_asignacion(request):
 
                     horario = Horario(
                         oferta=oferta,
+                        sede=form.cleaned_data["sede"],
                         aula=aula,
                         dia=dia,
                         hora_inicio=hora_inicio,
@@ -766,7 +767,7 @@ def editar_asignacion(
 
     semestre = grupo_referencia.semestre
 
-    sede_actual = horario.aula.sede
+    sede_actual = horario.sede
 
     # ======================================================
     # URL DE RETORNO
@@ -844,7 +845,7 @@ def editar_asignacion(
                 # vuelve automáticamente a su estado previo.
                 # ==========================================
 
-                with transaction.atomic():
+                with operacion_planificacion([oferta.profesor_id, profesor.pk], excluir_horario=horario.pk):
 
                     # ======================================
                     # 1. ACTUALIZAR OFERTA
@@ -887,6 +888,7 @@ def editar_asignacion(
                     # 3. ACTUALIZAR HORARIO
                     # ======================================
 
+                    horario.sede = form.cleaned_data["sede"]
                     horario.aula = aula
                     horario.dia = dia
                     horario.hora_inicio = hora_inicio
@@ -945,7 +947,7 @@ def editar_asignacion(
                 "modalidad": (oferta.modalidad_id),
                 "grupos": [grupo.id for grupo in grupos_actuales],
                 "cupos": (cupos_actuales),
-                "sede": (sede_actual.id),
+                "sede": (sede_actual.id if sede_actual else None),
                 "aula": (horario.aula_id),
                 "dia": (horario.dia),
                 "hora_inicio": (horario.hora_inicio),
@@ -1122,11 +1124,11 @@ def exportar_excel(request):
         activo=True,
     ).select_related(
         "aula",
-        "aula__sede",
+        "aula__sede", "sede",
     )
 
     if sede_id:
-        horarios_exportacion = horarios_exportacion.filter(aula__sede_id=sede_id)
+        horarios_exportacion = horarios_exportacion.filter(sede_id=sede_id)
 
     if aula_id:
         horarios_exportacion = horarios_exportacion.filter(aula_id=aula_id)
@@ -1171,7 +1173,7 @@ def exportar_excel(request):
         ofertas_grupo = ofertas_grupo.filter(grupo_id=grupo_id)
 
     if sede_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__aula__sede_id=sede_id)
+        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__sede_id=sede_id)
 
     if aula_id:
         ofertas_grupo = ofertas_grupo.filter(oferta__horarios__aula_id=aula_id)
@@ -1312,8 +1314,8 @@ def exportar_excel(request):
                 horario.get_dia_display(),
                 horario.hora_inicio.strftime("%H:%M"),
                 horario.hora_fin.strftime("%H:%M"),
-                horario.aula.nombre,
-                horario.aula.sede.nombre,
+                horario.aula.nombre if horario.aula_id else "Aula pendiente",
+                horario.sede.nombre,
                 (plan.area_academica.nombre if plan and plan.area_academica else ""),
             ]
 
@@ -1383,6 +1385,15 @@ def eventos_calendario(request):
 
 @require_POST
 def mover_horario(request):
+    return _actualizar_bloque_horario(request, resize=False)
+
+
+@require_POST
+def redimensionar_horario(request):
+    return _actualizar_bloque_horario(request, resize=True)
+
+
+def _actualizar_bloque_horario(request, *, resize):
     if not request.user.is_authenticated:
         return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
     if not request.user.has_perm("horarios.change_horario"):
@@ -1398,15 +1409,11 @@ def mover_horario(request):
         return JsonResponse({"errors": dict(form.errors)}, status=400)
     try:
         with transaction.atomic():
-            horario = Horario.objects.select_for_update(of=("self",)).select_related(
+            horario = Horario.objects.select_related(
                 "oferta__profesor", "oferta__periodo", "oferta__asignatura", "aula__sede", "oferta__modalidad",
             ).prefetch_related("oferta__grupos__programa").get(
                 pk=form.cleaned_data["horario_id"], activo=True, oferta__activo=True,
             )
-            # Serializar movimientos que comparten recursos dentro de este endpoint.
-            list(Profesor.objects.select_for_update().filter(pk=horario.oferta.profesor_id))
-            list(Aula.objects.select_for_update().filter(pk=horario.aula_id))
-            list(Grupo.objects.select_for_update().filter(ofertas_academicas=horario.oferta).order_by("pk"))
             original = datos.get("original")
             if original is not None and original != {
                 "dia": horario.dia, "hora_inicio": horario.hora_inicio.isoformat(), "hora_fin": horario.hora_fin.isoformat(),
@@ -1415,8 +1422,11 @@ def mover_horario(request):
             fecha = date(2000, 1, 1)
             duracion = datetime.combine(fecha, horario.hora_fin) - datetime.combine(fecha, horario.hora_inicio)
             nueva_duracion = datetime.combine(fecha, form.cleaned_data["hora_fin"]) - datetime.combine(fecha, form.cleaned_data["hora_inicio"])
-            if nueva_duracion != duracion:
+            if resize and (form.cleaned_data["dia"] != horario.dia or form.cleaned_data["hora_inicio"] != horario.hora_inicio):
+                raise ValidationError("El cambio de duración solo puede modificar la hora final.")
+            if not resize and nueva_duracion != duracion:
                 raise ValidationError({"hora_fin": "Mover un horario debe conservar su duración."})
+            horario._original_calendario = original
             horario.dia = form.cleaned_data["dia"]
             horario.hora_inicio = form.cleaned_data["hora_inicio"]
             horario.hora_fin = form.cleaned_data["hora_fin"]
@@ -1481,13 +1491,10 @@ def crear_horario_oferta(request):
     try:
         with transaction.atomic():
             contexto = resolver_contexto_calendario(request.GET)
-            oferta = oferta_del_contexto(form.cleaned_data["oferta_id"], contexto, bloquear=True)
-            aula = get_object_or_404(aulas_del_contexto(contexto), pk=form.cleaned_data["aula_id"])
-            # Usar el mismo orden de bloqueos que el endpoint de movimiento.
-            list(Profesor.objects.select_for_update().filter(pk=oferta.profesor_id))
-            list(Aula.objects.select_for_update().filter(pk=aula.pk))
-            list(Grupo.objects.select_for_update().filter(ofertas_academicas=oferta).order_by("pk"))
-            horario = Horario(oferta=oferta, aula=aula, dia=form.cleaned_data["dia"],
+            oferta = oferta_del_contexto(form.cleaned_data["oferta_id"], contexto)
+            aula_id = form.cleaned_data["aula_id"]
+            aula = get_object_or_404(aulas_del_contexto(contexto), pk=aula_id) if aula_id else None
+            horario = Horario(oferta=oferta, sede=contexto["sede"], aula=aula, dia=form.cleaned_data["dia"],
                 hora_inicio=form.cleaned_data["hora_inicio"], hora_fin=form.cleaned_data["hora_fin"])
             horario.full_clean()
             horario.save()
@@ -1499,3 +1506,48 @@ def crear_horario_oferta(request):
         return JsonResponse({"errors": errores}, status=400)
     return JsonResponse({"ok": True, "horario_id": horario.pk, "event": evento,
         "message": "Horario creado correctamente."}, status=201)
+
+
+@require_GET
+def aulas_horario_calendario(request, horario_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.view_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para consultar horarios."]}}, status=403)
+    try:
+        contexto = resolver_contexto_calendario(request.GET)
+        horario = get_object_or_404(horarios_del_contexto(**contexto), pk=horario_id)
+    except ValidationError as error:
+        return JsonResponse({"errors": error.message_dict}, status=400)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["El horario no pertenece al contexto seleccionado."]}}, status=404)
+    return JsonResponse({"event": serializar_evento(horario), "aulas": [
+        {"id": a.pk, "nombre": a.nombre, "sede": a.sede.nombre} for a in aulas_del_contexto({**contexto, "sede": horario.sede})]})
+
+
+@require_POST
+def asignar_aula_horario(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.change_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para modificar horarios."]}}, status=403)
+    try:
+        datos = json.loads(request.body)
+        if not isinstance(datos, dict): raise ValueError
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"errors": {"__all__": ["Envíe un objeto JSON válido."]}}, status=400)
+    form = AsignarAulaHorarioForm(datos)
+    if not form.is_valid(): return JsonResponse({"errors": dict(form.errors)}, status=400)
+    try:
+        with transaction.atomic():
+            contexto = resolver_contexto_calendario(request.GET)
+            horario = get_object_or_404(horarios_del_contexto(**contexto), pk=form.cleaned_data["horario_id"])
+            aula = get_object_or_404(aulas_del_contexto({**contexto, "sede": horario.sede}), pk=form.cleaned_data["aula_id"])
+            horario.aula = aula
+            horario.save(update_fields=["aula"])
+            evento = serializar_evento(horario)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["El horario o el aula no pertenece al contexto seleccionado."]}}, status=404)
+    except ValidationError as error:
+        return JsonResponse({"errors": error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}}, status=400)
+    return JsonResponse({"ok": True, "event": evento, "message": "Aula actualizada correctamente."})

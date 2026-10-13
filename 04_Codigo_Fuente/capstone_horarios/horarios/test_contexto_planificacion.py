@@ -76,7 +76,7 @@ class ContextoPlanificacionTests(TestCase):
         oferta = OfertaAcademica.objects.create(asignatura=self.horario.oferta.asignatura,
             profesor=self.horario.oferta.profesor, periodo=self.horario.oferta.periodo, modalidad=self.horario.oferta.modalidad)
         OfertaGrupo.objects.create(oferta=oferta, grupo=grupo, cupos=10)
-        horario = Horario(oferta=oferta, aula=Aula.objects.get(codigo="N-101"), dia="MI", hora_inicio=time(10), hora_fin=time(12))
+        horario = Horario(oferta=oferta, sede=Sede.objects.get(codigo="SEDE-NORTE"), aula=Aula.objects.get(codigo="N-101"), dia="MI", hora_inicio=time(10), hora_fin=time(12))
         horario.full_clean()
         horario.save()
         return horario

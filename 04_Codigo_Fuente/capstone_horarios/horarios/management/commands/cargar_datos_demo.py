@@ -44,6 +44,10 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        # También el comando completo toma primero las filas estables, en PK ascendente.
+        list(Profesor.objects.select_for_update().filter(
+            identificacion__in=[f"DOC-DEMO-{n:03d}" for n in range(1, 7)]
+        ).order_by("pk"))
 
         if options["solo_docencia"]:
             return self.cargar_condiciones_docentes()
@@ -703,6 +707,21 @@ class Command(BaseCommand):
         # AULAS
         # ==================================================
 
+        # Condiciones ficticias: no reemplazar cargas ni disponibilidades existentes.
+        for profesor_demo in profesores.values():
+            if not CargaDocente.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
+                carga = CargaDocente(profesor=profesor_demo, periodo=periodo, horas_asignadas="12.00")
+                carga.full_clean()
+                carga.save()
+            if not DisponibilidadProfesor.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
+                for codigo_dia, _ in Horario.DIAS:
+                    bloque = DisponibilidadProfesor(
+                        profesor=profesor_demo, periodo=periodo, dia=codigo_dia,
+                        hora_inicio=time(8), hora_fin=time(20),
+                    )
+                    bloque.full_clean()
+                    bloque.save()
+
         aula_101, _ = Aula.objects.update_or_create(
             sede=sede_academica,
             codigo="A-101",
@@ -887,6 +906,7 @@ class Command(BaseCommand):
 
             horario, _ = Horario.objects.get_or_create(
                 oferta=oferta,
+                sede=aula.sede,
                 aula=aula,
                 dia=dia,
                 hora_inicio=hora_inicio,
@@ -1127,21 +1147,6 @@ class Command(BaseCommand):
             time(11, 0),
         )
 
-        # Condiciones ficticias: no reemplazar cargas ni disponibilidades existentes.
-        for profesor_demo in profesores.values():
-            if not CargaDocente.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
-                carga = CargaDocente(profesor=profesor_demo, periodo=periodo, horas_asignadas="12.00")
-                carga.full_clean()
-                carga.save()
-            if not DisponibilidadProfesor.objects.filter(profesor=profesor_demo, periodo=periodo).exists():
-                for codigo_dia, _ in Horario.DIAS:
-                    bloque = DisponibilidadProfesor(
-                        profesor=profesor_demo, periodo=periodo, dia=codigo_dia,
-                        hora_inicio=time(8), hora_fin=time(20),
-                    )
-                    bloque.full_clean()
-                    bloque.save()
-
         # ==================================================
         # RESUMEN
         # ==================================================
@@ -1193,7 +1198,7 @@ class Command(BaseCommand):
             raise CommandError("No existe el periodo 01-2026. No se cargaron condiciones.") from error
         profesores = {p.identificacion: p for p in Profesor.objects.select_for_update().filter(
             identificacion__in=[codigo for codigo, _, _ in datos]
-        )}
+        ).order_by("pk")}
         # Comprobar el alcance antes de escribir. No crear ni renombrar docentes.
         for codigo, nombre, _ in datos:
             profesor = profesores.get(codigo)

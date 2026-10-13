@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from academico.models import (
-    Asignatura, Aula, CentroTutorial, Facultad, Modalidad,
+    Asignatura, Aula, CentroTutorial, Facultad, Modalidad, CargaDocente, DisponibilidadProfesor,
     PeriodoAcademico, Profesor, ProgramaAcademico, Sede, Semestre,
 )
 from .models import Grupo, Horario, OfertaAcademica, OfertaGrupo
@@ -40,6 +40,10 @@ class ValidacionHorarioTests(TestCase):
         )
 
     def crear_oferta(self, profesor, grupo):
+        CargaDocente.objects.get_or_create(profesor=profesor, periodo=grupo.periodo, activo=True, defaults={"horas_asignadas": 48})
+        for dia, _ in Horario.DIAS:
+            DisponibilidadProfesor.objects.get_or_create(profesor=profesor, periodo=grupo.periodo, dia=dia,
+                hora_inicio=time(0), hora_fin=time.max, defaults={"activo": True})
         oferta = OfertaAcademica(
             asignatura=self.asignatura, profesor=profesor,
             periodo=grupo.periodo, modalidad=self.modalidad,
@@ -53,7 +57,7 @@ class ValidacionHorarioTests(TestCase):
 
     def nuevo_horario(self, profesor, grupo, aula, inicio=time(8), fin=time(10), dia="LU"):
         return Horario(
-            oferta=self.crear_oferta(profesor, grupo), aula=aula,
+            oferta=self.crear_oferta(profesor, grupo), sede=aula.sede, aula=aula,
             dia=dia, hora_inicio=inicio, hora_fin=fin,
         )
 
