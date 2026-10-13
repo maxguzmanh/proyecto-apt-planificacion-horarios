@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (!window.FullCalendar) { mostrarMensaje("No fue posible cargar el calendario. Recargue la página."); return; }
     const editable = element.dataset.canEdit === "true";
+    const puedeEliminar = element.dataset.canDelete === "true";
     const puedeCrear = element.dataset.canCreate === "true";
     const dias = ["DO", "LU", "MA", "MI", "JU", "VI", "SA"];
     const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -26,6 +27,44 @@ document.addEventListener("DOMContentLoaded", function () {
     const aulaGuardar = document.getElementById("asignar-aula-guardar");
     const detalleElement = document.getElementById("detalle-horario-modal");
     const detalleModal = detalleElement && window.bootstrap ? new bootstrap.Modal(detalleElement) : null;
+    let eventoEliminar = null, enviandoEliminar = false;
+    const eliminarElement = document.getElementById("eliminar-horario-modal");
+    const eliminarModal = puedeEliminar && eliminarElement && window.bootstrap ? new bootstrap.Modal(eliminarElement, { backdrop: "static", keyboard: false }) : null;
+    const eliminarConfirmar = document.getElementById("eliminar-confirmar");
+    function abrirEliminar(evento) {
+        if (!puedeEliminar || guardando || (evento.extendedProps.provisional || evento.extendedProps.ocupacion_externa) || !eliminarModal) return;
+        bloquear(true); eventoEliminar = evento;
+        const p = evento.extendedProps;
+        texto("eliminar-asignatura", `${p.codigo_asignatura} · ${evento.title}`);
+        texto("eliminar-profesor", p.profesor);
+        texto("eliminar-programa", [...new Set(p.grupos.map(g => g.programa))].join(", ") || "Sin programa relacionado");
+        texto("eliminar-grupos", p.grupos.map(g => g.codigo).join(", ") || "Sin grupos relacionados");
+        texto("eliminar-sede", p.sede); texto("eliminar-aula", p.aula || "Aula pendiente");
+        texto("eliminar-dia", nombresDias[dias.indexOf(p.dia)]);
+        texto("eliminar-inicio", p.hora_inicio.slice(0, 5)); texto("eliminar-fin", p.hora_fin.slice(0, 5));
+        document.getElementById("eliminar-error").hidden = true;
+        eliminarModal.show();
+    }
+    if (eliminarModal) {
+        eliminarElement.addEventListener("hidden.bs.modal", function () { eventoEliminar = null; if (!enviandoEliminar) bloquear(false); });
+        eliminarConfirmar.addEventListener("click", async function () {
+            if (!eventoEliminar || enviandoEliminar) return;
+            enviandoEliminar = true; eliminarConfirmar.disabled = true;
+            eliminarElement.querySelectorAll("[data-bs-dismiss]").forEach(b => { b.disabled = true; });
+            try {
+                const datos = await json(element.dataset.deleteUrl, post({ horario_id: Number(eventoEliminar.id) }));
+                if (!datos.ok) throw new Error("No se pudo eliminar el horario.");
+                eventoEliminar = null; eliminarModal.hide();
+                mostrarMensaje("Horario eliminado correctamente.", "success"); await refrescar();
+            } catch (error) {
+                const aviso = document.getElementById("eliminar-error"); aviso.textContent = error.message; aviso.hidden = false;
+            } finally {
+                enviandoEliminar = false; eliminarConfirmar.disabled = false;
+                eliminarElement.querySelectorAll("[data-bs-dismiss]").forEach(b => { b.disabled = false; });
+                if (!eventoEliminar) bloquear(false);
+            }
+        });
+    }
     function texto(id, valor) { document.getElementById(id).textContent = valor; }
     function hora(fecha) { return [fecha.getHours(), fecha.getMinutes(), fecha.getSeconds()].map(n => String(n).padStart(2, "0")).join(":"); }
     function urlContexto(url) { return `${url}?${element.dataset.filters}`; }
@@ -35,7 +74,14 @@ document.addEventListener("DOMContentLoaded", function () {
         let datos;
         try { datos = await response.json(); }
         catch (_) { throw new Error("No se pudo confirmar la operación. Actualice el calendario para comprobar su estado."); }
-        if (!response.ok) throw new Error(Object.values(datos.errors || {}).flat().join(" ") || "No fue posible guardar.");
+        if (!response.ok) {
+            let mensaje = Object.values(datos.errors || {}).flat().join(" ") || "No fue posible guardar.";
+            if (datos.conflicto_profesor) {
+                const c = datos.conflicto_profesor.extendedProps;
+                mensaje += ` ${c.codigo_asignatura} · ${datos.conflicto_profesor.title}. Centro: ${c.centros.join(", ")}. Facultad: ${c.facultades.join(", ")}. Programa: ${c.programas.join(", ")}. Modalidad: ${c.modalidad}. Sede: ${c.sede}. Periodo: ${c.periodo}. Semestre: ${c.semestres.join(", ")}. Grupos: ${c.grupos.map(g => g.codigo).join(", ")}. Aula: ${c.aula}.`;
+            }
+            throw new Error(mensaje);
+        }
         return datos;
     }
     function cerrarMenu() { if (menu) menu.hidden = true; }
@@ -59,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (_) { mostrarMensaje("Cambio guardado. Recargue la página para actualizar el panel académico.", "warning"); }
     }
     function confirmarBloque(info, tipo) {
-        if (!editable || guardando || info.event.extendedProps.provisional || !moverModal) { info.revert(); return; }
+        if (!editable || guardando || (info.event.extendedProps.provisional || info.event.extendedProps.ocupacion_externa) || !moverModal) { info.revert(); return; }
         if (tipo === "resize" && info.event.end - info.event.start < 3600000) {
             info.revert(); mostrarMensaje("La duración mínima de un horario es 1 hora."); return;
         }
@@ -72,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
         moverModal.show();
     }
     function abrirMenu(evento, x, y) {
-        if (guardando || evento.extendedProps.provisional || !menu) return;
+        if (guardando || (evento.extendedProps.provisional || evento.extendedProps.ocupacion_externa) || !menu) return;
         eventoMenu = evento;
         menuAula.textContent = evento.extendedProps.aula_id ? "Cambiar aula" : "Asignar aula";
         menuAula.hidden = !editable;
@@ -88,6 +134,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const props = evento.extendedProps;
         texto("detalle-asignatura", `${props.codigo_asignatura} · ${evento.title}`);
         texto("detalle-profesor", props.profesor); texto("detalle-modalidad", props.modalidad);
+        texto("detalle-centro", (props.centros || []).join(", ") || "No determinado");
+        texto("detalle-facultad", (props.facultades || []).join(", ") || "No determinada");
+        texto("detalle-programa", (props.programas || [...new Set(props.grupos.map(g => g.programa))]).join(", ") || "No determinado");
+        texto("detalle-periodo", props.periodo || "No determinado");
+        texto("detalle-semestre", (props.semestres || []).join(", ") || "No determinado");
         texto("detalle-grupos", props.grupos.map(g => `${g.codigo} (${g.programa})`).join(", "));
         texto("detalle-bloque", `${nombresDias[dias.indexOf(props.dia)]} · ${props.hora_inicio.slice(0, 5)}–${props.hora_fin.slice(0, 5)}`);
         texto("detalle-sede", props.sede); texto("detalle-aula", props.aula || "Aula pendiente"); detalleModal.show();
@@ -107,6 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         eventReceive: async function (info) {
             if (!puedeCrear || guardando) { info.revert(); return; }
+            limpiarOcupaciones();
             bloquear(true); info.event.setProp("startEditable", false); info.event.setProp("durationEditable", false);
             const inicio = new Date(info.event.start), fin = new Date(inicio);
             fin.setHours(fin.getHours() + 1);
@@ -123,10 +175,27 @@ document.addEventListener("DOMContentLoaded", function () {
         eventContent: function (info) {
             const p = info.event.extendedProps, content = document.createElement("div");
             content.className = "uniplan-event-content";
+            if (p.ocupacion_externa) {
+                for (const valor of ["OCUPADO EN OTRO CONTEXTO", info.event.title, p.sede, `${p.hora_inicio.slice(0, 5)}–${p.hora_fin.slice(0, 5)}`]) {
+                    const line = document.createElement("div"); line.textContent = valor; content.appendChild(line);
+                }
+                return { domNodes: [content] };
+            }
             const horario = p.provisional ? "1 hora · Sin guardar" : `${p.hora_inicio.slice(0, 5)}–${p.hora_fin.slice(0, 5)}`;
             for (const [clase, valor] of [["uniplan-event-title", info.event.title], ["uniplan-event-time", horario],
                 ["uniplan-event-detail", p.profesor], ["uniplan-event-detail", p.aula || "Aula pendiente"]]) {
                 const line = document.createElement("div"); line.className = clase; line.textContent = valor; content.appendChild(line);
+            }
+            if (puedeEliminar && !p.provisional && !p.ocupacion_externa) {
+                const boton = document.createElement("button");
+                boton.type = "button"; boton.className = "uniplan-event-delete"; boton.textContent = "×";
+                boton.setAttribute("title", "Eliminar horario"); boton.setAttribute("aria-label", "Eliminar horario");
+                ["pointerdown", "mousedown", "touchstart", "dblclick", "contextmenu"].forEach(nombre => {
+                    boton.addEventListener(nombre, ev => { ev.stopPropagation(); if (nombre === "contextmenu") ev.preventDefault(); });
+                });
+                boton.addEventListener("keydown", ev => { ev.stopPropagation(); });
+                boton.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); abrirEliminar(info.event); });
+                content.appendChild(boton);
             }
             return { domNodes: [content] };
         },
@@ -145,9 +214,41 @@ document.addEventListener("DOMContentLoaded", function () {
         eventResize: function (info) { confirmarBloque(info, "resize"); }
     });
     calendar.render();
+    let versionOcupaciones = 0, gesto = null;
+    const referencias = [];
+    function limpiarOcupaciones() {
+        ++versionOcupaciones;
+        referencias.splice(0).forEach(evento => evento.remove());
+    }
+    async function cargarOcupaciones(ofertaId) {
+        limpiarOcupaciones(); const version = versionOcupaciones;
+        try {
+            const datos = await json(urlContexto(element.dataset.occupationsBase.replace("/0/", `/${ofertaId}/`)));
+            if (version !== versionOcupaciones) return;
+            const normales = new Set(calendar.getEvents().filter(e => !e.extendedProps.ocupacion_externa).map(e => String(e.extendedProps.horario_id || e.id)));
+            datos.filter(e => !normales.has(String(e.extendedProps.horario_id))).forEach(e => referencias.push(calendar.addEvent(e)));
+        } catch (error) { if (version === versionOcupaciones) mostrarMensaje(error.message); }
+    }
+    if (puedeCrear) {
+        document.querySelector(".academic-panel").addEventListener("pointerdown", function (ev) {
+            const card = ev.target.closest(".offer-drag-card");
+            if (!card || guardando || (ev.button !== undefined && ev.button !== 0)) return;
+            limpiarOcupaciones(); gesto = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, oferta: card.dataset.ofertaId, iniciado: false };
+        });
+        document.addEventListener("pointermove", function (ev) {
+            if (!gesto || ev.pointerId !== gesto.id || gesto.iniciado) return;
+            if (Math.hypot(ev.clientX - gesto.x, ev.clientY - gesto.y) >= 5) { gesto.iniciado = true; cargarOcupaciones(gesto.oferta); }
+        });
+        for (const nombre of ["pointerup", "pointercancel"]) document.addEventListener(nombre, function () { gesto = null; limpiarOcupaciones(); });
+        window.addEventListener("blur", function () { gesto = null; limpiarOcupaciones(); });
+        document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { gesto = null; limpiarOcupaciones(); } });
+        document.getElementById("filtros-planificacion").addEventListener("change", limpiarOcupaciones);
+    }
     document.addEventListener("click", function (ev) { if (menu && !menu.contains(ev.target)) cerrarMenu(); });
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") cerrarMenu(); });
     if (menu) {
+        const eliminarOpcion = document.getElementById("context-eliminar-horario");
+        if (puedeEliminar && eliminarOpcion) eliminarOpcion.addEventListener("click", function () { if (eventoMenu) abrirEliminar(eventoMenu); });
         document.getElementById("context-ver-detalle").addEventListener("click", function () { if (eventoMenu) verDetalle(eventoMenu); });
         menuAula.addEventListener("click", async function () {
             if (!editable || guardando || !eventoMenu || !aulaModal) return;

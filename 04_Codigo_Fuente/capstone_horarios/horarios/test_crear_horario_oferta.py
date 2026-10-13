@@ -82,7 +82,7 @@ class CrearHorarioOfertaTests(TestCase):
     def test_conflicto_profesor(self):
         response = self.crear(dia="VI", hora_inicio="14:00", hora_fin="16:00")
         self.assert_rechazado(response, Horario.objects.count())
-        self.assertIn("El profesor", response.json()["errors"]["oferta"][0])
+        self.assertIn("ya tiene una asignación", response.json()["errors"]["oferta"][0])
 
     def test_conflicto_aula(self):
         grupo = Grupo.objects.get(programa=self.grupo.programa, semestre=self.grupo.semestre, codigo="05PD G2")

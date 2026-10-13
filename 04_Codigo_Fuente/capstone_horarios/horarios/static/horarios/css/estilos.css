@@ -1855,3 +1855,13 @@ a:hover {
 .calendar-context-menu button { display: block; width: 100%; border: 0; background: #fff; color: var(--ui-navy-dark); padding: 10px 12px; text-align: left; font-size: 12px; }
 .calendar-context-menu button:hover, .calendar-context-menu button:focus-visible { background: var(--ui-primary-soft); outline: 2px solid var(--ui-primary); }
 .calendar-context-menu button[hidden] { display: none; }
+
+/* Acción discreta contenida en el evento; deja espacio al título. */
+.uniplan-event-content { position: relative; padding-right: 22px; }
+.uniplan-event-delete { position: absolute; top: 0; right: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: inherit; opacity: .65; font-size: 18px; line-height: 16px; cursor: pointer; z-index: 5; touch-action: manipulation; }
+.fc-event:hover .uniplan-event-delete, .uniplan-event-delete:focus-visible { opacity: 1; }
+.uniplan-event-delete:hover, .uniplan-event-delete:focus-visible { background: #fee2e2; color: #991b1b; outline: 2px solid #991b1b; outline-offset: -2px; }
+
+#uniplan-calendar .evento-ocupacion-externa { background: #dbe4ef; border: 1px dashed #526579; color: #24364a; opacity: .42; cursor: default; }
+#uniplan-calendar .evento-ocupacion-externa .uniplan-event-content { padding-right: 0; }
+.excel-export { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 6px; }

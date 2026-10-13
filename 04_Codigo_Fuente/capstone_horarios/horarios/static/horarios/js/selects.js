@@ -42,6 +42,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const solicitud = ++version;
         limpiarDesde(indice + 1);
         if (indice + 1 < selects.length && select.value) await cargar(indice + 1, "", solicitud);
+        if (solicitud === version && selects.every(s => !s.disabled && s.value)) form.requestSubmit();
+        else {
+            const calendario = document.getElementById("uniplan-calendar");
+            if (calendario) calendario.closest(".planning-calendar-panel").hidden = true;
+            const lista = document.querySelector(".academic-subject-list");
+            if (lista) lista.replaceChildren();
+        }
     }));
     form.addEventListener("submit", function (event) {
         if (selects.some(s => s.disabled || !s.value)) {

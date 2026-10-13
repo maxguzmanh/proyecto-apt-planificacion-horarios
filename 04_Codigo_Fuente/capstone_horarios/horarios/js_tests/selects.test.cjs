@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname, "../static/horarios/js/selec
 const orden = ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
 function setup(restaurar = false) {
     const nodes = new Map();
-    const calls = [];
+    const calls = []; let submissions = 0;
     class Node {
         constructor() { this.value = ""; this.listeners = {}; this.disabled = false; this.children = []; }
         addEventListener(name, fn) { this.listeners[name] = fn; }
@@ -15,6 +15,7 @@ function setup(restaurar = false) {
         appendChild(child) { this.children.push(child); }
         setAttribute() {}
         focus() {}
+        requestSubmit() { submissions++; }
     }
     orden.forEach(id => nodes.set(id, new Node()));
     const form = new Node();
@@ -33,9 +34,9 @@ function setup(restaurar = false) {
         return { ok: true, json: async () => [{ id: orden.indexOf(campo) + 1, nombre: campo }] };
     };
     vm.runInNewContext(source, { document: { getElementById: id => nodes.get(id),
-        createElement: () => new Node(), addEventListener: (_name, fn) => fn() },
+        querySelector: () => null, createElement: () => new Node(), addEventListener: (_name, fn) => fn() },
         Option: class { constructor(text, value) { this.text = text; this.value = value; } }, URLSearchParams, fetch });
-    return { nodes, calls, form };
+    return { nodes, calls, form, submissions: () => submissions };
 }
 
 test("solo habilita el siguiente filtro; Sede no se selecciona automáticamente", async () => {
@@ -76,3 +77,8 @@ test("no permite aplicar un contexto incompleto", () => {
     assert.equal(bloqueado, true);
     assert.equal(app.nodes.has("grupo"), false);
 });
+
+test("contexto completo se aplica al seleccionar semestre", async () => { const a=setup(true); await new Promise(r=>setImmediate(r)); await a.nodes.get("semestre").listeners.change(); assert.equal(a.submissions(),1); });
+test("cambiar semestre vuelve a aplicar sin botón", async () => { const a=setup(true); await new Promise(r=>setImmediate(r)); a.nodes.get("semestre").value="8"; await a.nodes.get("semestre").listeners.change(); assert.equal(a.submissions(),1); });
+test("contexto incompleto no envía formulario", async () => { const a=setup(); a.nodes.get("centro").value="1"; await a.nodes.get("centro").listeners.change(); assert.equal(a.submissions(),0); });
+test("plantilla sin Aplicar filtros ni Nueva asignación y Excel accesible", () => { const html=fs.readFileSync(path.join(__dirname,"../templates/horarios/planificacion.html"),"utf8"); assert.ok(!html.includes("Aplicar filtros")); assert.ok(!html.includes("+ Nueva asignación")); assert.ok(html.includes("{% url 'exportar_excel' %}?{{ request.GET.urlencode }}")); assert.ok(html.includes('aria-label="Exportar planificación a Excel"')); assert.ok(html.includes("<svg")); });

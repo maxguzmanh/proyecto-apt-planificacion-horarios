@@ -33,6 +33,7 @@ from academico.models import (
 from .services import (obtener_panel_academico, obtener_resumen_docente,
     calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes, operacion_planificacion)
 from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm, AsignarAulaHorarioForm
+from .presentacion import respuesta_error
 from .calendario import SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
 from .models import (
     Grupo,
@@ -52,7 +53,7 @@ from .models import (
 # ==========================================================
 
 
-def agregar_errores_formulario(form, error):
+def agregar_errores_formulario(form, error, candidato=None):
     """
     Agrega los errores de validación del modelo como
     errores generales del formulario.
@@ -64,7 +65,7 @@ def agregar_errores_formulario(form, error):
 
     if hasattr(error, "message_dict"):
 
-        for errores in error.message_dict.values():
+        for errores in respuesta_error(error, candidato)["errors"].values():
 
             for mensaje in errores:
 
@@ -634,6 +635,7 @@ def nueva_asignacion(request):
                 agregar_errores_formulario(
                     form,
                     error,
+                    locals().get("horario"),
                 )
 
             else:
@@ -910,6 +912,7 @@ def editar_asignacion(
                 agregar_errores_formulario(
                     form,
                     error,
+                    locals().get("horario"),
                 )
 
             else:
@@ -1437,7 +1440,7 @@ def _actualizar_bloque_horario(request, *, resize):
         return JsonResponse({"errors": {"__all__": ["El horario no existe o está inactivo."]}}, status=404)
     except ValidationError as error:
         errores = error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}
-        return JsonResponse({"errors": errores}, status=400)
+        return JsonResponse(respuesta_error(error, locals().get("horario")), status=400)
     return JsonResponse({"ok": True, "event": evento})
 
 
@@ -1503,7 +1506,7 @@ def crear_horario_oferta(request):
         return JsonResponse({"errors": {"__all__": ["La oferta o el aula no existe, está inactiva o no pertenece al contexto seleccionado."]}}, status=404)
     except ValidationError as error:
         errores = error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}
-        return JsonResponse({"errors": errores}, status=400)
+        return JsonResponse(respuesta_error(error, locals().get("horario")), status=400)
     return JsonResponse({"ok": True, "horario_id": horario.pk, "event": evento,
         "message": "Horario creado correctamente."}, status=201)
 
@@ -1549,5 +1552,58 @@ def asignar_aula_horario(request):
     except Http404:
         return JsonResponse({"errors": {"__all__": ["El horario o el aula no pertenece al contexto seleccionado."]}}, status=404)
     except ValidationError as error:
-        return JsonResponse({"errors": error.message_dict if hasattr(error, "message_dict") else {"__all__": error.messages}}, status=400)
+        return JsonResponse(respuesta_error(error, locals().get("horario")), status=400)
     return JsonResponse({"ok": True, "event": evento, "message": "Aula actualizada correctamente."})
+
+
+@require_POST
+def eliminar_horario_calendario(request):
+    """Elimina mediante el protocolo transaccional central de Horario.delete()."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.delete_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para eliminar horarios."]}}, status=403)
+    try:
+        datos = json.loads(request.body)
+        if not isinstance(datos, dict) or set(datos) != {"horario_id"}:
+            raise ValueError
+        pk = datos["horario_id"]
+        if isinstance(pk, bool) or not isinstance(pk, int) or pk <= 0:
+            raise ValueError
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"errors": {"horario_id": ["Envíe únicamente un horario_id entero válido."]}}, status=400)
+    try:
+        with transaction.atomic():
+            horario = Horario.objects.get(pk=pk)
+            horario.delete()
+    except Horario.DoesNotExist:
+        return JsonResponse({"errors": {"horario_id": ["El horario no existe."]}}, status=404)
+    except ValidationError as error:
+        return JsonResponse({"errors": {"__all__": error.messages}}, status=409)
+    return JsonResponse({"ok": True})
+
+
+@require_GET
+def ocupaciones_oferta(request, oferta_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"errors": {"__all__": ["Debe iniciar sesión."]}}, status=401)
+    if not request.user.has_perm("horarios.view_horario"):
+        return JsonResponse({"errors": {"__all__": ["No tiene permiso para consultar horarios."]}}, status=403)
+    from .presentacion import horarios_con_contexto, evento_con_contexto
+    try:
+        contexto = resolver_contexto_calendario(request.GET)
+        oferta = oferta_del_contexto(oferta_id, contexto)
+    except ValidationError as error:
+        return JsonResponse({"errors": error.message_dict}, status=400)
+    except Http404:
+        return JsonResponse({"errors": {"__all__": ["Oferta no disponible en este contexto."]}}, status=404)
+    visibles = set(horarios_del_contexto(**contexto).values_list("pk", flat=True))
+    globales = horarios_con_contexto(Horario.objects.filter(activo=True, oferta__activo=True,
+        oferta__profesor=oferta.profesor, oferta__periodo=oferta.periodo).exclude(pk__in=visibles)).order_by("pk")
+    eventos = []
+    for horario in globales:
+        evento = evento_con_contexto(horario)
+        evento.update(id=f"ocupacion-{horario.pk}", editable=False, startEditable=False, durationEditable=False, classNames=["evento-ocupacion-externa"])
+        evento["extendedProps"]["ocupacion_externa"] = True
+        eventos.append(evento)
+    return JsonResponse(eventos, safe=False)

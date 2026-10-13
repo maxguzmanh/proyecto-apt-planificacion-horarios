@@ -1,0 +1,24 @@
+<div class="modal fade" id="eliminar-horario-modal" tabindex="-1" aria-labelledby="eliminar-horario-titulo" aria-hidden="true">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="eliminar-horario-titulo">Eliminar asignación</h5></div>
+    <div class="modal-body">
+      <p>¿Está seguro de eliminar esta asignación?</p>
+      <dl class="mb-0">
+        <dt>Asignatura</dt><dd id="eliminar-asignatura"></dd>
+        <dt>Profesor</dt><dd id="eliminar-profesor"></dd>
+        <dt>Programa Académico</dt><dd id="eliminar-programa"></dd>
+        <dt>Grupo(s)</dt><dd id="eliminar-grupos"></dd>
+        <dt>Sede</dt><dd id="eliminar-sede"></dd>
+        <dt>Aula</dt><dd id="eliminar-aula"></dd>
+        <dt>Día</dt><dd id="eliminar-dia"></dd>
+        <dt>Hora inicio</dt><dd id="eliminar-inicio"></dd>
+        <dt>Hora fin</dt><dd id="eliminar-fin"></dd>
+      </dl>
+      <div id="eliminar-error" class="alert alert-danger mt-3" role="alert" hidden></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="eliminar-confirmar">Eliminar</button>
+    </div>
+  </div></div>
+</div>

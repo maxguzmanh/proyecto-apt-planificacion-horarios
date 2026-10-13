@@ -4,9 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../static/horarios/js/calendario.js"), "utf8");
-function setup({ canCreate = true, canEdit = true, rejected = false, networkError = false } = {}) {
+function setup({ canCreate = true, canEdit = true, canDelete = true, rejected = false, networkError = false } = {}) {
     const nodes = new Map(), calls = [], modales = new Map(), documentListeners = {};
-    let options, draggableOptions, refetches = 0;
+    let options, draggableOptions, refetches = 0; const added = []; const normalEvents = []; let removedReferences=0;
     class Node {
         constructor(id) { this.id = id; this.value = ""; this.listeners = {}; this.children = []; this.textContent = ""; this.style = {}; this.hidden = true; this.offsetWidth = 180; this.offsetHeight = 80; }
         addEventListener(name, fn) { this.listeners[name] = fn; }
@@ -22,14 +22,14 @@ function setup({ canCreate = true, canEdit = true, rejected = false, networkErro
         replaceWith(other) { this.replaced = other; }
     }
     function node(id) { if (!nodes.has(id)) nodes.set(id, new Node(id)); return nodes.get(id); }
-    node("uniplan-calendar").dataset = { canCreate: String(canCreate), canEdit: String(canEdit),
+    node("uniplan-calendar").dataset = { canCreate: String(canCreate), canEdit: String(canEdit), canDelete: String(canDelete), deleteUrl: "/eliminar/",
         referenceWeek: "2000-01-03", eventsUrl: "/eventos/", moveUrl: "/mover/", resizeUrl: "/resize/",
-        createUrl: "/crear/", assignUrl: "/asignar/", aulasBase: "/horarios/0/aulas/", filters: "sede=1&semestre=5" };
+        occupationsBase: "/ofertas/0/ocupaciones/", createUrl: "/crear/", assignUrl: "/asignar/", aulasBase: "/horarios/0/aulas/", filters: "sede=1&semestre=5" };
     const document = { addEventListener: (name, fn) => name === "DOMContentLoaded" ? fn() : documentListeners[name] = fn,
         getElementById: id => !canEdit && ["mover-horario-modal", "asignar-aula-modal"].includes(id) ? null : node(id),
         querySelector: selector => selector.includes("csrfmiddlewaretoken") ? { value: "csrf-test" } : node(selector),
         querySelectorAll: () => [], createElement: () => new Node() };
-    class Calendar { constructor(_el, config) { options = config; } render() {} setOption(k, v) { options[k] = v; } refetchEvents() { refetches++; } }
+    class Calendar { constructor(_el, config) { options = config; } render() {} setOption(k, v) { options[k] = v; } refetchEvents() { refetches++; } getEvents() { return normalEvents; } addEvent(e) { added.push(e); return { remove(){removedReferences++;} }; } }
     class Draggable { constructor(_el, config) { draggableOptions = config; } }
     class Modal { constructor(el) { this.el = el; this.visible = false; modales.set(el.id, this); } show() { this.visible = true; } hide() { this.visible = false; this.el.listeners["hidden.bs.modal"]?.(); } }
     const fetch = async (url, request = {}) => {
@@ -38,20 +38,21 @@ function setup({ canCreate = true, canEdit = true, rejected = false, networkErro
             if (networkError) throw new Error("Error de red");
             return { ok: !rejected, json: async () => rejected ? { errors: { oferta: ["Conflicto backend"] } } : { ok: true, horario_id: 9, event: { classNames: url.includes("asignar") ? ["evento-completo"] : ["evento-pendiente"] } } };
         }
+        if (url.includes("/ocupaciones/")) return { ok:true, json:async()=>[ { ...evento(), id:"ocupacion-9", editable:false, startEditable:false, durationEditable:false, classNames:["evento-ocupacion-externa"], extendedProps:{...evento().extendedProps, ocupacion_externa:true} } ] };
         if (url.includes("/aulas/")) return { ok: true, json: async () => ({ event: { extendedProps: { aula_id: null } }, aulas: [{ id: 3, nombre: "Aula real", sede: "Sede real" }] }) };
         return { ok: true, text: async () => "panel actualizado" };
     };
     const bootstrap = { Modal };
     vm.runInNewContext(source, { document, fetch, bootstrap, window: { FullCalendar: { Calendar, Draggable }, bootstrap,
-        innerWidth: 1200, innerHeight: 900, location: { href: "/planificacion/?sede=1" } },
+        addEventListener() {}, innerWidth: 1200, innerHeight: 900, location: { href: "/planificacion/?sede=1" } },
         FullCalendar: { Calendar, Draggable }, Option: class { constructor(text, value) { this.text = text; this.value = value; } },
         DOMParser: class { parseFromString() { return { querySelector: () => node("nuevo-panel") }; } } });
-    return { node, calls, modales, options, draggableOptions, documentListeners, refetches: () => refetches };
+    return { node, calls, modales, options, draggableOptions, documentListeners, added, normalEvents, removedReferences:()=>removedReferences, refetches: () => refetches };
 }
 function evento(aulaId = null) {
     return { id: "9", title: "Asignatura real", start: new Date(2000, 0, 3, 8), end: new Date(2000, 0, 3, 9),
         extendedProps: { horario_id: 9, asignatura: "Asignatura real", codigo_asignatura: "ASIG", profesor: "Docente real",
-            grupos: [], modalidad: "Presencial", dia: "LU", hora_inicio: "08:00:00", hora_fin: "09:00:00",
+            sede: "Sede real", grupos: [], modalidad: "Presencial", dia: "LU", hora_inicio: "08:00:00", hora_fin: "09:00:00",
             aula_id: aulaId, aula_pendiente: aulaId === null, aula: aulaId === null ? "Aula pendiente" : "Sala real" } };
 }
 function cambio(fin = 10) {
@@ -195,3 +196,26 @@ test("solo lectura tiene detalle pero no arrastre ni resize ni aula", () => {
     abrirMenu(app); assert.equal(app.node("context-asignar-aula").hidden, true);
     app.node("context-ver-detalle").listeners.click(); assert.equal(app.modales.get("detalle-horario-modal").visible, true);
 });
+
+function x(app) { return app.options.eventContent({ event: evento() }).domNodes[0].children.find(n => n.className === "uniplan-event-delete"); }
+function pulsarX(app) { x(app).listeners.click({ preventDefault() {}, stopPropagation() {} }); }
+test("X aparece con permiso y etiqueta accesible", () => { const b=x(setup()); assert.equal(b["aria-label"],"Eliminar horario"); assert.equal(b.title,"Eliminar horario"); assert.equal(b.textContent,"×"); });
+test("X ausente sin permiso de eliminación", () => { assert.equal(x(setup({canDelete:false,canEdit:false})),undefined); });
+test("X detiene inicio de arrastre, resize y propagación", () => { const b=x(setup()); for(const k of ["pointerdown","mousedown","touchstart","keydown"]) { let stopped=false; b.listeners[k]({stopPropagation(){stopped=true;}}); assert.ok(stopped); } });
+test("X abre confirmación sin POST y muestra sede pendiente", () => { const a=setup(); pulsarX(a); assert.ok(a.modales.get("eliminar-horario-modal").visible); assert.equal(a.calls.length,0); assert.equal(a.node("eliminar-sede").textContent,"Sede real"); assert.equal(a.node("eliminar-aula").textContent,"Aula pendiente"); });
+test("cancelar eliminación no modifica evento", () => { const a=setup(); pulsarX(a); a.modales.get("eliminar-horario-modal").hide(); assert.equal(a.calls.length,0); assert.equal(a.refetches(),0); });
+test("confirmar envía únicamente horario_id con CSRF", async () => { const a=setup(); pulsarX(a); await a.node("eliminar-confirmar").listeners.click(); const p=a.calls.find(c=>c.method==="POST"); assert.equal(p.url,"/eliminar/"); assert.deepEqual(JSON.parse(p.body),{horario_id:9}); assert.equal(p.headers["X-CSRFToken"],"csrf-test"); });
+test("eliminación exitosa refresca calendario", async () => { const a=setup(); pulsarX(a); await a.node("eliminar-confirmar").listeners.click(); assert.equal(a.refetches(),1); assert.equal(a.node("calendar-message").textContent,"Horario eliminado correctamente."); });
+test("eliminación exitosa refresca panel", async () => { const a=setup(); pulsarX(a); await a.node("eliminar-confirmar").listeners.click(); assert.ok(a.node(".academic-subject-list").replaced); });
+test("error backend conserva evento y permite cancelar", async () => { const a=setup({rejected:true}); pulsarX(a); await a.node("eliminar-confirmar").listeners.click(); assert.equal(a.refetches(),0); assert.ok(a.modales.get("eliminar-horario-modal").visible); assert.equal(a.node("eliminar-error").textContent,"Conflicto backend"); assert.equal(a.node("eliminar-confirmar").disabled,false); });
+test("menú contextual reutiliza confirmación de X", async () => { const a=setup(); abrirMenu(a); a.node("context-eliminar-horario").listeners.click(); assert.ok(a.modales.get("eliminar-horario-modal").visible); assert.equal(a.calls.length,0); await a.node("eliminar-confirmar").listeners.click(); assert.equal(a.calls.find(c=>c.method==="POST").url,"/eliminar/"); });
+
+async function iniciarDrag(a) { const card={dataset:{ofertaId:"7"}}; a.node(".academic-panel").listeners.pointerdown({target:{closest:()=>card},clientX:0,clientY:0,pointerId:1,button:0}); a.documentListeners.pointermove({clientX:10,clientY:0,pointerId:1}); await new Promise(r=>setImmediate(r)); }
+test("iniciar drag carga ocupaciones desde oferta", async()=>{ const a=setup(); await iniciarDrag(a); assert.ok(a.calls.some(c=>c.url==="/ofertas/7/ocupaciones/?sede=1&semestre=5")); });
+test("referencia externa no permite editar y no tiene X", async()=>{ const a=setup(); await iniciarDrag(a); assert.equal(a.added[0].editable,false); assert.equal(a.added[0].durationEditable,false); assert.equal(a.added[0].startEditable,false); const content=a.options.eventContent({event:a.added[0]}).domNodes[0]; assert.equal(content.children[0].textContent,"OCUPADO EN OTRO CONTEXTO"); assert.ok(!content.children.some(n=>n.className==="uniplan-event-delete")); });
+test("horario normal no se duplica como referencia", async()=>{ const a=setup(); a.normalEvents.push(evento()); await iniciarDrag(a); assert.equal(a.added.length,0); });
+test("terminar drag limpia referencias", async()=>{ const a=setup(); await iniciarDrag(a); a.documentListeners.pointerup(); assert.equal(a.removedReferences(),1); });
+test("cancelar drag limpia referencias", async()=>{ const a=setup(); await iniciarDrag(a); a.documentListeners.pointercancel(); assert.equal(a.removedReferences(),1); });
+test("ocupación abre detalle de solo lectura sin menú", async()=>{ const a=setup(); await iniciarDrag(a); const e=a.added[0]; a.options.eventClick({event:e}); assert.ok(a.modales.get("detalle-horario-modal").visible); abrirMenu(a,e); assert.equal(a.node("calendar-context-menu").hidden,true); });
+
+test("respuesta tardía después de terminar drag no agrega referencias", async()=>{ const a=setup(); const card={dataset:{ofertaId:"7"}}; a.node(".academic-panel").listeners.pointerdown({target:{closest:()=>card},clientX:0,clientY:0,pointerId:1,button:0}); a.documentListeners.pointermove({clientX:10,clientY:0,pointerId:1}); a.documentListeners.pointerup(); await new Promise(r=>setImmediate(r)); assert.equal(a.added.length,0); });

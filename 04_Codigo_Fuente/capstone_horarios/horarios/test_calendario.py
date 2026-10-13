@@ -92,7 +92,7 @@ class CalendarioTests(TestCase):
         blocker.save()
         response = self.mover("VI", "14:00:00", "16:00:00")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("El profesor", response.json()["errors"]["oferta"][0])
+        self.assertIn("ya tiene una asignación", response.json()["errors"]["oferta"][0])
         self.comprobar_sin_cambios()
 
     def test_conflicto_aula_no_modifica_registro(self):

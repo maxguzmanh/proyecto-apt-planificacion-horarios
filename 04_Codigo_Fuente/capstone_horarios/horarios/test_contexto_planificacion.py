@@ -86,14 +86,14 @@ class ContextoPlanificacionTests(TestCase):
         cantidad = Horario.objects.count()
         response = self.crear(dia="MI", inicio="11:00", fin="13:00")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("El profesor", response.json()["errors"]["oferta"][0])
+        self.assertIn("ya tiene una asignación", response.json()["errors"]["oferta"][0])
         self.assertEqual(Horario.objects.count(), cantidad)
 
     def test_conflicto_profesor_en_otro_programa(self):
         self.bloquear_en_otra_sede(otro_programa=True)
         response = self.crear(dia="MI", inicio="11:00", fin="13:00")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("El profesor", response.json()["errors"]["oferta"][0])
+        self.assertIn("ya tiene una asignación", response.json()["errors"]["oferta"][0])
 
     def test_calendario_filtrado_no_limita_movimiento_ni_totales(self):
         bloque = self.bloquear_en_otra_sede(otro_programa=True)

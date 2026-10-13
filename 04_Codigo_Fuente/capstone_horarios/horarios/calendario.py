@@ -55,7 +55,7 @@ def horarios_del_contexto(centro, facultad, programa, modalidad, periodo, semest
     horarios = horarios.filter(sede=sede)
     return horarios.select_related(
         "oferta__asignatura", "oferta__profesor", "oferta__periodo", "oferta__modalidad", "aula__sede", "sede",
-    ).prefetch_related(Prefetch("oferta__grupos", queryset=Grupo.objects.select_related("programa"))).distinct().order_by("dia", "hora_inicio", "pk")
+    ).prefetch_related(Prefetch("oferta__grupos", queryset=Grupo.objects.select_related("programa__facultad", "centro_tutorial", "semestre"))).distinct().order_by("dia", "hora_inicio", "pk")
 
 
 def serializar_evento(horario):
@@ -74,6 +74,11 @@ def serializar_evento(horario):
             "asignatura": horario.oferta.asignatura.nombre,
             "codigo_asignatura": horario.oferta.asignatura.codigo,
             "profesor": str(horario.oferta.profesor),
+            "periodo": horario.oferta.periodo.codigo,
+            "centros": list(dict.fromkeys(g.centro_tutorial.nombre for g in grupos)),
+            "facultades": list(dict.fromkeys(g.programa.facultad.nombre for g in grupos)),
+            "programas": list(dict.fromkeys(g.programa.nombre for g in grupos)),
+            "semestres": list(dict.fromkeys(g.semestre.get_numero_display() for g in grupos)),
             "grupos": [{"id": g.pk, "codigo": g.codigo, "programa": g.programa.nombre} for g in grupos],
             "aula": horario.aula.nombre if horario.aula_id else "Aula pendiente",
             "aula_id": horario.aula_id, "aula_pendiente": horario.aula_id is None,
