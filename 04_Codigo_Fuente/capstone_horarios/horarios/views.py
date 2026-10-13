@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404, HttpResponse, JsonResponse
@@ -98,20 +98,19 @@ def agregar_errores_formulario(form, error, candidato=None):
 
 @login_required
 def inicio(request):
-
-    context = {
-        "centros": CentroTutorial.objects.filter(activo=True).order_by("nombre"),
-        "total_programas": ProgramaAcademico.objects.filter(activo=True).count(),
-        "total_profesores": Profesor.objects.filter(activo=True).count(),
-        "total_aulas": Aula.objects.filter(activo=True).count(),
-        "total_horarios": Horario.objects.filter(activo=True).count(),
-    }
-
-    return render(
-        request,
-        "horarios/inicio.html",
-        context,
-    )
+    if not request.user.has_perm("horarios.view_horario") or not any(request.user.has_perm(f"horarios.{accion}_horario") for accion in ("add","change","delete")):
+        raise PermissionDenied
+    from .dashboard import resumen_dashboard
+    periodos=list(PeriodoAcademico.objects.filter(activo=True).order_by("-fecha_inicio","-pk"))
+    periodo_id=request.GET.get("periodo")
+    if periodo_id:
+        periodo=next((p for p in periodos if str(p.pk)==periodo_id),None)
+        if periodo is None: raise Http404("Periodo académico no disponible.")
+    else: periodo=periodos[0] if periodos else None
+    context=resumen_dashboard(periodo)
+    acciones=[("Ir a Planificación","planificacion","horarios.view_horario"),("Profesores","profesores","academico.view_profesor"),("Aulas","aulas","academico.view_aula"),("Programas Académicos","programas_academicos","academico.view_programaacademico"),("Disponibilidad Docente","disponibilidades_profesores","academico.view_disponibilidadprofesor"),("Carga Docente","cargas_docentes","academico.view_cargadocente")]
+    context.update(periodos=periodos,periodo=periodo,acciones=[{"nombre":n,"ruta":r} for n,r,p in acciones if request.user.has_perm(p)])
+    return render(request,"horarios/inicio.html",context)
 
 
 # ==========================================================

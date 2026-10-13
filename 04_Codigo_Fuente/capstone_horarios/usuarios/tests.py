@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -9,6 +10,9 @@ class AutenticacionTests(TestCase):
         cls.usuario = get_user_model().objects.create_user(
             username="usuario_prueba", password="ClavePrueba123!"
         )
+        # El usuario que verifica login/logout accede al dashboard como planificador.
+        cls.usuario.user_permissions.add(*Permission.objects.filter(
+            content_type__app_label="horarios", codename__in=["view_horario", "change_horario"]))
 
     def test_acceso_anonimo_redirige_al_login(self):
         response = self.client.get(reverse("inicio"))

@@ -53,7 +53,7 @@ class EliminacionGenericaTests(TestCase):
         usuario = get_user_model().objects.create_user(username="sin_permiso")
         self.client.force_login(usuario)
         self.assertEqual(self.client.get(self.url).status_code, 403)
-        self.client.get(reverse("inicio"))
+        self.client.get(reverse("login"))
         response = self.client.post(self.url, {
             "csrfmiddlewaretoken": self.client.cookies["csrftoken"].value,
         })
