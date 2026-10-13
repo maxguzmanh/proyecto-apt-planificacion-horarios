@@ -73,12 +73,16 @@
 
 
             <div class="text-secondary small">
-                Total: {{ registros|length }}
+                Total: {{ total_registros }}{% if busqueda %} · Resultados: {{ registros|length }}{% endif %}
             </div>
 
         </div>
 
 
+        <form method="GET" class="maintenance-search">
+            <label for="mantenedor-busqueda">Buscar registros</label>
+            <div><input id="mantenedor-busqueda" type="search" name="q" value="{{ busqueda }}" maxlength="200" class="form-control" placeholder="Código, nombre o relación…"><button type="submit" class="btn btn-outline-primary">Buscar</button>{% if busqueda %}<a href="{% url listado_url %}" class="btn btn-outline-secondary">Limpiar</a>{% endif %}</div>
+        </form>
         {% if registros %}
 
             <div class="table-responsive">
@@ -227,12 +231,11 @@
                 <div class="text-center py-5">
 
                     <div class="fw-semibold mb-2">
-                        No existen registros
+                        {% if busqueda %}No se encontraron registros{% else %}No existen registros{% endif %}
                     </div>
 
                     <div class="text-secondary small mb-4">
-                        Todavía no existen registros
-                        en este mantenedor.
+                        {% if busqueda %}Pruebe otro término de búsqueda.{% else %}Todavía no existen registros en este mantenedor.{% endif %}
                     </div>
 
 

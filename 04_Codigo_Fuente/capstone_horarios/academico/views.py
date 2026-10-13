@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import (
 )
 from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
+from django.db.models import Q, CharField, TextField, ForeignKey
 from django.shortcuts import (
     get_object_or_404,
     redirect,
@@ -678,6 +679,24 @@ def listado_generico(
     config = MANTENEDORES[clave]
 
     objetos = config["queryset"]()
+    total_registros = objetos.count()
+    busqueda = request.GET.get("q", "").strip()[:200]
+    if busqueda:
+        modelo = config["modelo"]
+        campos = []
+        for field in modelo._meta.concrete_fields:
+            if isinstance(field, (CharField, TextField)): campos.append(field.name)
+            elif isinstance(field, ForeignKey):
+                campos.extend(f"{field.name}__{f.name}" for f in field.related_model._meta.concrete_fields if isinstance(f, (CharField, TextField)))
+        for palabra in busqueda.split()[:10]:
+            consulta = Q()
+            for campo in campos: consulta |= Q(**{campo+"__icontains": palabra})
+            # Semestre tiene un número con choices, no un campo nombre.
+            if modelo is Semestre:
+                numeros = [valor for valor, etiqueta in modelo._meta.get_field("numero").choices if palabra.casefold() == str(etiqueta).casefold() or palabra == str(valor)]
+                consulta |= Q(numero__in=numeros)
+            objetos = objetos.filter(consulta) if consulta.children else objetos.none()
+        objetos = objetos.distinct()
 
     registros = []
 
@@ -711,6 +730,8 @@ def listado_generico(
         "descripcion": config["descripcion"],
         "columnas": [columna[0] for columna in config["columnas"]],
         "registros": registros,
+        "total_registros": total_registros, "busqueda": busqueda,
+        "listado_url": config["listado_url"],
         "crear_url": config["crear_url"],
         "editar_url": config["editar_url"],
         "eliminar_url": config["eliminar_url"],
@@ -904,6 +925,10 @@ def eliminar_generico(
 
         try:
 
+            # El FK del plan hacia programa es CASCADE: evitar borrar planes
+            # académicos silenciosamente desde la confirmación genérica.
+            if isinstance(objeto, ProgramaAcademico) and PlanEstudioAsignatura.objects.filter(programa=objeto).exists():
+                raise ProtectedError("El programa tiene planes de estudio asociados.", [objeto])
             objeto.delete()
 
         except (

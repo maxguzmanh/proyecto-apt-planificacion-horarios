@@ -949,6 +949,11 @@ class GrupoForm(forms.ModelForm):
             .order_by("nombre")
         )
 
+        centro_seleccionado = self.data.get(self.add_prefix("centro_tutorial")) if self.is_bound else centro_actual
+        if centro_seleccionado and str(centro_seleccionado).isdigit():
+            compatibles = ProgramaCentroTutorial.objects.filter(centro_tutorial_id=centro_seleccionado, activo=True).values("programa_id")
+            self.fields["programa"].queryset = self.fields["programa"].queryset.filter(pk__in=compatibles)
+
         self.fields["periodo"].queryset = queryset_activos_con_actual(
             PeriodoAcademico,
             periodo_actual,

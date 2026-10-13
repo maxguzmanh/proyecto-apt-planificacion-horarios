@@ -1948,3 +1948,19 @@ a:hover {
 @media(max-width:1100px) { .dashboard-main-grid,.dashboard-lower-grid { grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); } .dashboard-kpi { padding:16px; } }
 @media(max-width:850px) { .dashboard-main-grid,.dashboard-lower-grid,.dashboard-detail-grid { grid-template-columns:1fr; } .dashboard-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:500px) { .dashboard-kpis { grid-template-columns:1fr; } .dashboard-header { gap:18px; } .dashboard-period { width:100%; } .dashboard-period-controls .form-select { flex:1; min-width:0; } .dashboard-panel { padding:18px; } .dashboard-offer-list .dashboard-item { flex-direction:column; align-items:start; gap:7px; } .dashboard-offer-list .dashboard-item>a { align-self:start; } }
+
+.sidebar-maintenance summary { display:flex; align-items:center; justify-content:space-between; padding:12px; cursor:pointer; font-size:13px; color:#dbe6f3; list-style:none; border-radius:4px; }
+.sidebar-maintenance summary::-webkit-details-marker { display:none; }
+.sidebar-maintenance summary:hover,.sidebar-maintenance[open]>summary { background:#203f65; color:#fff; }
+.sidebar-maintenance summary:focus-visible { outline:2px solid #b9d3ff; outline-offset:2px; }
+.sidebar-chevron { display:inline-block; transition:transform .15s ease; }
+.sidebar-maintenance[open] .sidebar-chevron { transform:rotate(180deg); }
+.sidebar-maintenance-links { padding:5px 0 8px 10px; border-left:1px solid #375777; margin-left:12px; }
+.sidebar-navigation .sidebar-maintenance-links a { padding:8px 10px; font-size:12px; }
+.sidebar-technical { display:block; color:#c1d0e2; text-decoration:none; font-size:11px; margin:14px 0; }
+.sidebar-technical:hover { color:#fff; }
+.maintenance-search { padding:18px 24px; border-bottom:1px solid #e9edf2; }
+.maintenance-search label { display:block; font-size:.8rem; color:#637387; margin-bottom:6px; }
+.maintenance-search>div { display:flex; gap:8px; flex-wrap:wrap; }
+.maintenance-search input { flex:1; min-width:160px; }
+@media(max-width:767px) { .sidebar-maintenance { grid-column:1/-1; } }

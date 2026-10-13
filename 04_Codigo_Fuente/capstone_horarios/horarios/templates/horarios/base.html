@@ -50,15 +50,20 @@
         <nav class="sidebar-navigation" aria-label="Navegación">
             <a href="{% url 'inicio' %}" {% if request.resolver_match.url_name == 'inicio' %}class="is-active" aria-current="page"{% endif %}>Inicio</a>
             <a href="{% url 'planificacion' %}" {% if request.resolver_match.url_name == 'planificacion' %}class="is-active" aria-current="page"{% endif %}>Planificación</a>
-            <a href="{% url 'mantenedores' %}" {% if request.resolver_match.app_name == 'academico' or '/mantenedores/' in request.path %}class="is-active" aria-current="page"{% endif %}>Administración</a>
-            {% if request.user.is_staff %}
-                <a href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración Django ↗</a>
+            {% if menu_mantenedores %}
+            <details id="sidebar-mantenedores" class="sidebar-maintenance" {% if mantenedores_abierto %}open{% endif %}>
+                <summary>Mantenedores <span class="sidebar-chevron" aria-hidden="true">▾</span></summary>
+                <nav class="sidebar-maintenance-links" aria-label="Mantenedores">
+                    {% for opcion in menu_mantenedores %}<a href="{% url opcion.ruta %}" {% if opcion.activa %}class="is-active" aria-current="page"{% endif %}>{{ opcion.nombre }}</a>{% endfor %}
+                </nav>
+            </details>
             {% endif %}
         </nav>
         {% if request.user.is_authenticated %}
         <div class="sidebar-account">
             <span class="sidebar-account-label">Usuario actual</span>
             <strong>{{ request.user.username }}</strong>
+            {% if request.user.is_superuser %}<a class="sidebar-technical" href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración técnica ↗</a>{% endif %}
             <form method="POST" action="{% url 'logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="sidebar-logout">Cerrar sesión</button>
