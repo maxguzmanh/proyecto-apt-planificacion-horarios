@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const element = document.getElementById("profesor-calendar");
     if (!element) return;
-    const periodo = document.getElementById("profesor-periodo"), mensaje = document.getElementById("profesor-calendar-message"), vacio = document.getElementById("profesor-empty");
+    const periodo = document.getElementById("profesor-periodo"), mensaje = document.getElementById("profesor-calendar-message"), vacio = document.getElementById("profesor-empty"), exportarPdf = document.getElementById("profesor-exportar-pdf");
     function error(texto) { mensaje.className = "alert alert-danger"; mensaje.textContent = texto; mensaje.hidden = false; }
     if (!window.FullCalendar) { error("No fue posible cargar el calendario. Recargue la página."); return; }
     const modalElement = document.getElementById("detalle-horario-modal");
@@ -65,6 +65,10 @@ document.addEventListener("DOMContentLoaded", function () {
         ++version; ++detalleVersion; if(modal)modal.hide(); tips.forEach(t=>t.hide());
         calendar.removeAllEvents();
         const url=new URL(window.location.href);url.search="";if(periodo.value)url.searchParams.set("periodo_id",periodo.value);window.history.replaceState({},"",url);
+        if(exportarPdf){
+            exportarPdf.href=periodo.value ? `${exportarPdf.dataset.pdfUrl}?periodo_id=${encodeURIComponent(periodo.value)}` : "#";
+            exportarPdf.setAttribute("aria-disabled",periodo.value ? "false" : "true");
+        }
         calendar.refetchEvents();
     });
     calendar.render();

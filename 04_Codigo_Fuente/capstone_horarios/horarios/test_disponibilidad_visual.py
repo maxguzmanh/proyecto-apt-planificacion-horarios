@@ -40,21 +40,25 @@ class ModalidadSedeVisualTests(DatosDocencia,TestCase):
         self.virtual=Modalidad.objects.create(codigo="VIR",nombre="Virtual")
         self.hibrida=Modalidad.objects.create(codigo="HIB",nombre="Híbrida")
         self.campus=Sede.objects.create(codigo="SEDE-VIR",nombre="Nombre no usado para identificar",centro_tutorial=self.grupo.centro_tutorial)
+        self.ofertas_modalidad={}
         for m in [self.virtual,self.hibrida]:
             o=self.nueva_oferta(self.profesor);o.modalidad=m;o.save();OfertaGrupo.objects.create(oferta=o,grupo=self.grupo,cupos=10)
+            self.ofertas_modalidad[m.codigo]=o
     def sedes(self,m):return self.client.get(reverse("cargar_sedes"),{"centro":self.grupo.centro_tutorial_id,"modalidad":m.pk}).json()
-    def test_virtual_solo_campus(self):
-        self.modalidades();self.assertEqual([s["id"] for s in self.sedes(self.virtual)],[self.campus.pk])
-    def test_presencial_solo_fisicas(self):
-        self.modalidades();self.assertEqual([s["id"] for s in self.sedes(self.modalidad)],[self.aula.sede_id])
+    def test_parametro_virtual_no_filtra_sedes(self):
+        self.modalidades();self.assertEqual({s["id"] for s in self.sedes(self.virtual)},{self.aula.sede_id,self.campus.pk})
+    def test_parametro_presencial_no_filtra_sedes(self):
+        self.modalidades();self.assertEqual({s["id"] for s in self.sedes(self.modalidad)},{self.aula.sede_id,self.campus.pk})
     def test_hibrida_ambas(self):
         self.modalidades();self.assertEqual({s["id"] for s in self.sedes(self.hibrida)},{self.aula.sede_id,self.campus.pk})
-    def test_virtual_sin_campus(self):
-        self.modalidades();self.campus.activo=False;self.campus.save();self.assertEqual(self.sedes(self.virtual),[])
+    def test_campus_inactivo_no_aparece(self):
+        self.modalidades();self.campus.activo=False;self.campus.save();self.assertEqual([s["id"] for s in self.sedes(self.virtual)],[self.aula.sede_id])
     def test_virtual_sede_fisica_rechazada(self):
-        self.modalidades();r=self.client.get(reverse("eventos_calendario"),{**self.filtros,"modalidad":self.virtual.pk});self.assertEqual(r.status_code,404)
-    def test_presencial_campus_rechazado(self):
-        self.modalidades();r=self.client.get(reverse("eventos_calendario"),{**self.filtros,"sede":self.campus.pk});self.assertEqual(r.status_code,404)
+        self.modalidades();antes=Horario.objects.count()
+        r=self.client.post(reverse("crear_horario_oferta")+"?"+urlencode(self.filtros),json.dumps({"oferta_id":self.ofertas_modalidad["VIR"].pk,"dia":"LU","hora_inicio":"10:00","hora_fin":"11:00"}),content_type="application/json")
+        self.assertEqual(r.status_code,404);self.assertEqual(Horario.objects.count(),antes)
+    def test_contexto_campus_no_incluye_horarios_fisicos(self):
+        self.modalidades();r=self.client.get(reverse("eventos_calendario"),{**self.filtros,"sede":self.campus.pk});self.assertEqual(r.status_code,200);self.assertEqual(r.json(),[])
     def test_post_manipulado_no_crea(self):
         self.modalidades();antes=Horario.objects.count()
         r=self.client.post(reverse("crear_horario_oferta")+"?"+urlencode({**self.filtros,"sede":self.campus.pk}),json.dumps({"oferta_id":self.oferta.pk,"dia":"LU","hora_inicio":"10:00","hora_fin":"11:00"}),content_type="application/json")

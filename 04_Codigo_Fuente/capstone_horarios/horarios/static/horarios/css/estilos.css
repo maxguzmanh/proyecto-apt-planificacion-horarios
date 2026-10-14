@@ -174,12 +174,16 @@ a:hover {
    ENCABEZADO
    ========================================================= */
 
-.workspace-header {
+.workspace-header{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--ui-space-3);
-    margin-bottom: var(--ui-space-4);
+
+
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ui-border);
+    margin-bottom: 16px;
 }
 
 .workspace-eyebrow {
@@ -299,14 +303,16 @@ a:hover {
     border-top: 1px solid var(--ui-border);
 }
 
-.panel-heading-enterprise {
+.panel-heading-enterprise{
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--ui-border);
     min-height: 48px;
     padding: 10px 14px;
-    background: var(--ui-surface);
+
+
+    background: var(--ui-surface-soft);
 }
 
 .panel-kicker {
@@ -1036,6 +1042,106 @@ a:hover {
     color: #c1d0e2;
     margin-bottom: 6px;
 }
+
+.sidebar-account-label {
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.sidebar-user-icon {
+    flex:0 0 auto;
+}
+
+.sidebar-professor-identity,
+.sidebar-admin-identity {
+    display:flex;
+    align-items:center;
+    gap:9px;
+}
+
+.sidebar-professor-icon,
+.sidebar-admin-icon {
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    color:#B3D4FF;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:50%;
+}
+
+.sidebar-admin-icon {
+    color:#FFE2A8;
+    background:rgba(255,171,0,.12);
+    border-color:rgba(255,196,84,.28);
+}
+
+.sidebar-professor-identity > span:last-child,
+.sidebar-admin-identity > span:last-child {
+    display:grid;
+    min-width:0;
+    gap:1px;
+}
+
+.sidebar-professor-identity small,
+.sidebar-admin-identity small {
+    color:rgba(255,255,255,.64);
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+}
+
+.sidebar-professor-identity strong,
+.sidebar-admin-identity strong {
+    overflow-wrap:anywhere;
+}
+
+.maintenance-datatable-wrapper .dt-layout-row {
+    margin:0 0 12px;
+}
+
+.maintenance-datatable-wrapper .dt-layout-row:last-child {
+    margin:12px 0 0;
+}
+
+.maintenance-datatable-wrapper .dt-search input,
+.maintenance-datatable-wrapper .dt-length select {
+    min-height:32px;
+}
+
+.maintenance-datatable[data-maintainer="semestres"] :is(th,td).maintenance-column-left {
+    text-align:left !important;
+}
+
+.maintenance-datatable[data-maintainer="semestres"] :is(th,td):first-child {
+    width:120px !important;
+    min-width:120px;
+    text-align:left !important;
+}
+
+.maintenance-datatable[data-maintainer="semestres"] :is(th,td):last-child {
+    width:1% !important;
+    white-space:nowrap;
+}
+
+.professor-toolbar {
+    display:flex;
+    align-items:flex-end;
+    gap:12px;
+}
+
+.professor-toolbar .enterprise-field {
+    min-width:240px;
+}
+
+@media (max-width: 640px) {
+    .professor-toolbar { align-items:stretch; flex-direction:column; width:100%; }
+    .professor-toolbar .enterprise-field { min-width:0; }
+}
 .sidebar-account strong {
     display: block;
     font-size: 13px;
@@ -1076,10 +1182,12 @@ a:hover {
     outline: 2px solid #b9d3ff;
     outline-offset: 2px;
 }
-.planning-horizontal-filters {
+.planning-horizontal-filters{
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+
     gap: var(--ui-space-3);
+
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .planning-filter-panel .planning-form {
     padding: var(--ui-space-3);
@@ -1666,15 +1774,40 @@ a:hover {
     border-radius: var(--ui-radius-md);
     border: 1px solid var(--ui-border);
 }
+.dashboard-kpi-heading {
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-height:30px;
+}
+.dashboard-icon {
+    display:inline-grid;
+    place-items:center;
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    color:var(--ui-primary);
+    background:var(--ui-primary-soft);
+    border:1px solid #C7D9F5;
+    border-radius:var(--ui-radius-md);
+}
+.dashboard-kpi-warning .dashboard-icon,
+.dashboard-icon-pendientes,.dashboard-icon-atencion {
+    color:var(--ui-warning);
+    background:var(--ui-warning-soft);
+    border-color:#F1D59B;
+}
 .dashboard-kpi span {
     font-size: .78rem;
     color: var(--ui-text-subtle);
 }
-.dashboard-kpi strong {
+.dashboard-kpi strong{
     line-height: 1.2;
-    font-weight: 650;
+
     font-size: 28px;
     color: var(--ui-text);
+
+    font-weight: 650;
 }
 .dashboard-kpi-warning {
     background: #fffdf8;
@@ -1687,13 +1820,13 @@ a:hover {
     display: grid;
     grid-template-columns: minmax(0,1.85fr) minmax(0,1fr);
     gap: 20px;
-    align-items: start;
+    align-items: stretch;
 }
 .dashboard-detail-grid {
     display: grid;
     grid-template-columns: repeat(2,minmax(0,1fr));
     gap: 20px;
-    align-items: start;
+    align-items: stretch;
 }
 .dashboard-panel {
     background: var(--ui-surface);
@@ -1701,12 +1834,16 @@ a:hover {
     padding: 12px 16px;
     border-radius: var(--ui-radius-md);
     border: 1px solid var(--ui-border);
+    height:100%;
 }
 .dashboard-panel-heading {
     display: flex;
     gap: 12px;
     align-items: start;
     margin-bottom: 12px;
+}
+.dashboard-panel-heading > .dashboard-icon {
+    margin-top:1px;
 }
 
 
@@ -1715,9 +1852,11 @@ a:hover {
     letter-spacing: .07em;
     color: #7a8796;
 }
-.dashboard-state {
+.dashboard-state{
     border-top: 1px solid var(--ui-border);
     padding-top: 12px;
+
+    border-left: 3px solid var(--ui-primary);
 }
 .dashboard-state-primary {
     display: flex;
@@ -1920,6 +2059,21 @@ a:hover {
 }
 .dashboard-action>span {
     color: var(--ui-text-subtle);
+}
+.dashboard-action-label {
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:inherit !important;
+}
+.dashboard-action-label .dashboard-icon {
+    width:26px;
+    height:26px;
+    flex-basis:26px;
+}
+.dashboard-action-label .dashboard-icon svg {
+    width:15px;
+    height:15px;
 }
 .dashboard-catalogue-summary {
     display: flex;
@@ -2264,11 +2418,13 @@ textarea.form-control {
     height: 100%;
     background: var(--ui-primary);
 }
-.dashboard-panel-heading h2 {
+.dashboard-panel-heading h2{
     font-size: 1rem;
     line-height: 1.4;
     margin: 3px 0 0;
     color: var(--ui-text);
+
+
     font-weight: 650;
 }
 :is(#uniplan-calendar, #profesor-calendar) {
@@ -2350,26 +2506,58 @@ textarea.form-control {
 
 /* Identidad de página: un componente común con acciones independientes. */
 .workspace-header { align-items:center; flex-wrap:wrap; }
-.page-heading { display:flex; align-items:center; gap:12px; min-width:0; }
-.page-heading-icon { display:flex; align-items:center; justify-content:center; flex:0 0 40px; height:40px; border-radius:var(--ui-radius-md); background:var(--ui-primary-soft); color:var(--ui-primary); }
+.page-heading{ display:flex; align-items:center;  min-width:0;
+    gap: 14px;
+}
+.page-heading-icon{ display:flex; align-items:center; justify-content:center;   border-radius:var(--ui-radius-md); background:var(--ui-primary-soft); color:var(--ui-primary);
+    flex: 0 0 44px;
+    height: 44px;
+    border: 1px solid #CFE0F7;
+}
 .page-heading-copy { min-width:0; }
-.page-heading .workspace-title { font-size:24px; font-weight:600; line-height:1.25; }
-.page-heading .workspace-description { margin-top:3px; font-size:13px; line-height:1.45; }
+.page-heading .workspace-title{ font-size:24px;  line-height:1.25;
+    font-weight: 650;
+    letter-spacing: -.4px;
+    color: var(--ui-text);
+}
+.page-heading .workspace-description{  font-size:13px; line-height:1.45;
+    margin-top: 4px;
+    color: var(--ui-text-secondary);
+}
 .page-heading-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
 /* Acceso: identidad 58%, formulario 42%; decoración sin datos ni interacción. */
 .login-layout { min-height:100vh; min-height:100dvh; display:grid; grid-template-columns:minmax(0,1.38fr) minmax(0,1fr); }
-.login-identity { display:flex; flex-direction:column; justify-content:center; gap:32px; padding:clamp(32px,6vw,88px); background:var(--ui-primary-soft); border-right:1px solid var(--ui-border); }
-.login-brand { color:var(--ui-text); font-size:28px; font-weight:650; letter-spacing:-.5px; }
+.login-identity{ display:flex; flex-direction:column; justify-content:center; gap:32px; padding:clamp(32px,6vw,88px); border-right:1px solid #C7D1E0;
+    /* Fotografía: Fer Troulik, Unsplash (licencia Unsplash). */
+    background-image:linear-gradient(115deg,rgba(9,30,66,.88),rgba(9,30,66,.68)),url("../img/login-campus.jpg");
+    background-position:center;
+    background-size:cover;
+}
+.login-brand { color:#FFF; font-size:28px; font-weight:650; letter-spacing:-.5px; text-shadow:0 1px 8px rgba(0,0,0,.2); }
 .login-identity-copy { max-width:470px; }
-.login-identity-copy h2 { font-size:clamp(24px,2.4vw,32px); line-height:1.25; font-weight:600; margin:0 0 12px; }
-.login-identity-copy p { color:var(--ui-text-secondary); font-size:14px; line-height:1.6; margin:0; max-width:410px; }
+.login-identity-copy h2 { color:#FFF; font-size:clamp(24px,2.4vw,32px); line-height:1.25; font-weight:600; margin:0 0 12px; text-shadow:0 2px 12px rgba(0,0,0,.24); }
+.login-identity-copy p { color:rgba(255,255,255,.86); font-size:14px; line-height:1.6; margin:0; max-width:410px; text-shadow:0 1px 6px rgba(0,0,0,.22); }
 .login-calendar-art { width:100%; max-width:480px; }
 .login-calendar-art svg { display:block; width:100%; height:auto; }
-.login-access { display:flex; align-items:center; justify-content:center; padding:32px; background:var(--ui-surface); }
-.login-form-shell { width:100%; max-width:350px; }
-.login-form-shell h1 { font-size:24px; font-weight:600; margin:0 0 6px; }
+.login-access{ display:flex; align-items:center; justify-content:center; padding:32px;
+    background:#F4F5F7;
+}
+.login-form-shell{ width:100%;
+    max-width: 400px;
+    padding: 28px;
+    border:1px solid #C1C7D0;
+    border-top:3px solid var(--ui-primary);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+    box-shadow:0 12px 32px rgba(23,43,77,.12);
+}
+.login-form-shell h1{ font-size:24px; font-weight:600; margin:0 0 6px;
+    letter-spacing: -.4px;
+}
 .login-intro { font-size:13px; color:var(--ui-text-secondary); margin:0 0 24px; }
 .login-form-shell .form-control, .login-form-shell .btn { min-height:38px; }
+.login-form-shell .form-control { background:#FAFBFC; border-color:#AEB7C4; }
+.login-form-shell .form-control:focus { background:#FFF; border-color:var(--ui-primary); box-shadow:0 0 0 3px rgba(12,102,228,.14); }
 @media(max-width:850px) {
     .login-layout { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
     .login-identity { padding:20px 24px; gap:8px; border-right:0; border-bottom:1px solid var(--ui-border); }
@@ -2386,3 +2574,34 @@ textarea.form-control {
     .page-heading-actions { margin-left:0; }
     .login-form-shell h1 { font-size:22px; }
 }
+
+/* Marca local y jerarquía de contexto, coherentes en administración y portal. */
+.brand-lockup { display:inline-flex; align-items:center; gap:10px; font-weight:650; line-height:1; }
+.brand-lockup img { flex-shrink:0; }
+.sidebar-brand .brand-lockup { display:flex; margin:0; color:var(--ui-surface); font-size:23px; font-weight:650; }
+.sidebar-brand .brand-caption { margin:7px 0 0 42px; font-size:10px; }
+.page-heading-label { display:block; margin-bottom:3px; color:var(--ui-text-subtle); font-size:10px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; }
+.page-heading-icon img { border-radius:var(--ui-radius-md); }
+.panel-heading-enterprise h2 { font-weight:650; letter-spacing:-.15px; }
+.panel-kicker { letter-spacing:.06em; color:var(--ui-text-subtle); }
+.dashboard-period, .workspace-header > .enterprise-field { padding:8px 10px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-md); background:var(--ui-surface); }
+.dashboard-kpi { position:relative; }
+.dashboard-kpi::before { content:""; width:20px; height:2px; background:var(--ui-primary); margin-bottom:3px; }
+.dashboard-kpi-warning::before { background:var(--ui-warning); }
+.teacher-offer-modality { display:block; margin-top:3px; font-size:10px; font-weight:400; color:var(--ui-text-secondary); }
+.maintenance-search { background:var(--ui-surface-soft); }
+.login-form-shell .page-heading-label { color:var(--ui-primary); margin-bottom:8px; }
+.login-calendar-art { padding:8px; border:1px solid rgba(255,255,255,.58); border-radius:var(--ui-radius-md); background:rgba(255,255,255,.94); box-shadow:0 12px 30px rgba(0,0,0,.22); }
+@media(max-width:850px) { .login-form-shell { padding:24px; } }
+@media(max-width:500px) { .login-access { padding:20px 16px; } .login-form-shell { padding:20px; } .page-heading-icon { flex-basis:36px; height:36px; } }
+
+/* Módulo de exportación: formulario compacto independiente del calendario. */
+ .export-filters { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--ui-space-3); }
+.export-results { margin-top:var(--ui-space-4); }
+.export-results .dt-container { font-size:13px; }
+.export-results .dt-buttons .btn { border-radius:var(--ui-radius-sm); }
+.export-results .dt-scroll-head th { font-size:11px; white-space:nowrap; }
+.export-results td { white-space:nowrap; }
+.export-results .dt-container .form-control, .export-results .dt-container .form-select { width:auto; min-height:32px; }
+@media(max-width:1000px) { .export-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .export-filters { grid-template-columns:1fr; } }

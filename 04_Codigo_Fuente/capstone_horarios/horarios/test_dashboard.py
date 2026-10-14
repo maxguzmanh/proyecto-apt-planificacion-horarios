@@ -47,6 +47,9 @@ class DashboardTests(DatosDocencia,TestCase):
         r=self.get();self.assertEqual([a["nombre"] for a in r.context["acciones"]],["Ir a Planificación"])
         self.permisos("academico.view_profesor","academico.view_aula")
         self.assertEqual({a["nombre"] for a in self.get().context["acciones"]},{"Ir a Planificación","Profesores","Aulas"})
+    def test_dashboard_usa_iconos_y_paneles_alineados(self):
+        r=self.get();self.assertGreaterEqual(r.content.decode().count('class="dashboard-icon '),10)
+        self.assertContains(r,"dashboard-kpi-heading",count=4)
     def test_sin_pendientes(self):
         self.pendiente.aula=self.aula;self.pendiente.save()
         self.assertContains(self.get(),"Todos los horarios tienen aula asignada.")

@@ -1,25 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("filtros-planificacion");
     if (!form) return;
-    const orden = ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
+    const orden = ["centro", "sede", "facultad", "programa", "periodo", "semestre"];
     const selects = orden.map(id => document.getElementById(id));
-    const nombres = ["Centro Tutorial", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
-    const rutas = [null, "urlFacultades", "urlProgramas", "urlModalidades", "urlSedes", "urlPeriodos", "urlSemestres"];
+    const nombres = ["Centro Tutorial", "sede", "facultad", "programa", "periodo", "semestre"];
+    const rutas = [null, "urlSedes", "urlFacultades", "urlProgramas", "urlPeriodos", "urlSemestres"];
     const seleccion = orden.map(id => form.dataset["selected" + id[0].toUpperCase() + id.slice(1)] || "");
-    const ayudaSede = document.getElementById("sede-ayuda");
-    function actualizarAyudaSede() {
-        if (!ayudaSede) return;
-        const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
-        const codigo = modalidad ? modalidad.dataset.codigo : "";
-        const mensajes = {
-            PRE: "Selecciona la sede física donde se realizará la planificación.",
-            VIR: "Campus Virtual seleccionado automáticamente para la modalidad virtual.",
-            HIB: "Modalidad híbrida: selecciona la ubicación correspondiente a esta planificación, ya sea una sede física o Campus Virtual."
-        };
-        // No anunciar una selección automática que todavía no se ha realizado.
-        ayudaSede.textContent = codigo === "VIR" && !selects[4].value ? "" : (mensajes[codigo] || "");
-        ayudaSede.hidden = !ayudaSede.textContent;
-    }
     let version = 0;
     const estado = document.createElement("p");
     estado.className = "form-help mt-2 mb-0";
@@ -30,7 +16,6 @@ document.addEventListener("DOMContentLoaded", function () {
             selects[i].replaceChildren(new Option(`Seleccione ${nombres[i]}...`, ""));
             selects[i].disabled = true;
         }
-        actualizarAyudaSede();
     }
     async function cargar(indice, actual = "", solicitud = version) {
         if (!selects.slice(0, indice).every(s => s.value)) return false;
@@ -41,24 +26,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const response = await fetch(`${form.dataset[rutas[indice]]}?${params}`, { credentials: "same-origin" });
             if (!response.ok) throw new Error();
             let datos = await response.json();
-            if (indice === 4) {
-                const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
-                if (modalidad && modalidad.dataset.codigo === "VIR") datos = datos.filter(item => item.codigo === "SEDE-VIR");
-                if (modalidad && modalidad.dataset.codigo === "PRE") datos = datos.filter(item => item.codigo !== "SEDE-VIR");
-            }
             if (solicitud !== version) return false;
             limpiarDesde(indice);
             datos.forEach(item => { const option = new Option(item.nombre, item.id); option.dataset.codigo = item.codigo || ""; selects[indice].appendChild(option); });
             selects[indice].disabled = datos.length === 0;
             if (actual && datos.some(item => String(item.id) === actual)) selects[indice].value = actual;
-            if (indice === 4) {
-                const modalidad = Array.from(selects[3].options).find(o => String(o.value) === selects[3].value);
-                const virtuales = datos.filter(item => item.codigo === "SEDE-VIR");
-                if (modalidad && modalidad.dataset.codigo === "VIR" && virtuales.length === 1) {
-                    selects[indice].value = String(virtuales[0].id);
-                }
-            }
-            actualizarAyudaSede();
             estado.textContent = datos.length ? "" : `No hay opciones de ${nombres[indice]} para este contexto.`;
             return Boolean(selects[indice].value);
         } catch (_) {
@@ -70,8 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const solicitud = ++version;
         limpiarDesde(indice + 1);
         if (indice + 1 < selects.length && select.value) {
-            const siguiente = await cargar(indice + 1, "", solicitud);
-            if (indice === 3 && siguiente && solicitud === version) await cargar(5, "", solicitud);
+            await cargar(indice + 1, "", solicitud);
         }
         if (solicitud === version && selects.every(s => !s.disabled && s.value)) form.requestSubmit();
         else {
@@ -84,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
     form.addEventListener("submit", function (event) {
         if (selects.some(s => s.disabled || !s.value)) {
             event.preventDefault();
-            estado.textContent = "Complete Centro Tutorial, Facultad, Programa, Modalidad, Sede, Periodo y Semestre.";
+            estado.textContent = "Complete Centro Tutorial, Sede, Facultad, Programa, Periodo y Semestre.";
             const pendiente = selects.find(s => !s.disabled && !s.value);
             if (pendiente) pendiente.focus();
         }
@@ -96,7 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 1; i < selects.length; i++) {
             if (!await cargar(i, seleccion[i], version)) break;
         }
-        if (seleccion[4] && selects[4].value !== seleccion[4] && selects.every(s => !s.disabled && s.value)) form.requestSubmit();
     }
     restaurar();
 });

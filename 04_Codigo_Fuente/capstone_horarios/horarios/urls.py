@@ -1,10 +1,13 @@
 from django.urls import path
 
-from . import views, profesor_views
+from . import views, profesor_views, exportacion_views
 
 urlpatterns = [
+    path("planificacion/exportar/", exportacion_views.exportacion_planificacion, name="exportacion_planificacion"),
+    path("ajax/exportacion/semestres/", exportacion_views.semestres_exportacion, name="semestres_exportacion"),
     path("profesor/", profesor_views.profesor_inicio, name="profesor_inicio"),
     path("profesor/horario/", profesor_views.profesor_horario, name="profesor_horario"),
+    path("profesor/horario/exportar-pdf/", profesor_views.profesor_horario_pdf, name="profesor_horario_pdf"),
     path("profesor/calendario/eventos/", profesor_views.profesor_eventos, name="profesor_eventos"),
     path("profesor/calendario/horarios/<int:horario_id>/detalle/", profesor_views.profesor_detalle, name="profesor_detalle"),
     path("planificacion/calendario/ofertas/<int:oferta_id>/ocupaciones/", views.ocupaciones_oferta, name="ocupaciones_oferta"),
@@ -44,7 +47,7 @@ urlpatterns = [
     ),
     path(
         "planificacion/exportar-excel/",
-        views.exportar_excel,
+        exportacion_views.descargar_excel,
         name="exportar_excel",
     ),
     # Selects dependientes

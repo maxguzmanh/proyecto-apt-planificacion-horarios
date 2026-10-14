@@ -4,7 +4,10 @@
 {% block content %}
 <div class="app-page">
  <div class="workspace-header">{% include "horarios/componentes/cabecera.html" with icono="profesor" titulo="Mi horario" descripcion=perfil_docente only %}
-  <div class="enterprise-field"><label for="profesor-periodo">Periodo Académico</label><select id="profesor-periodo" class="form-select">{% for p in periodos %}<option value="{{ p.pk }}" {% if periodo.pk == p.pk %}selected{% endif %}>{{ p.nombre }}</option>{% empty %}<option value="">Sin periodos disponibles</option>{% endfor %}</select></div>
+  <div class="professor-toolbar">
+   <div class="enterprise-field"><label for="profesor-periodo">Periodo Académico</label><select id="profesor-periodo" class="form-select">{% for p in periodos %}<option value="{{ p.pk }}" {% if periodo.pk == p.pk %}selected{% endif %}>{{ p.nombre }}</option>{% empty %}<option value="">Sin periodos disponibles</option>{% endfor %}</select></div>
+   <a id="profesor-exportar-pdf" class="btn btn-primary" href="{% if periodo %}{% url 'profesor_horario_pdf' %}?periodo_id={{ periodo.pk }}{% else %}#{% endif %}" data-pdf-url="{% url 'profesor_horario_pdf' %}" {% if not periodo %}aria-disabled="true" tabindex="-1"{% endif %}>Exportar PDF</a>
+  </div>
  </div>
  <section class="planning-panel"><div class="panel-heading-enterprise"><div><span class="panel-kicker">CONSULTA</span><h2>Horario semanal</h2></div></div><div class="card-body">
   <div id="profesor-calendar-message" class="alert" role="status" aria-live="polite" hidden></div>

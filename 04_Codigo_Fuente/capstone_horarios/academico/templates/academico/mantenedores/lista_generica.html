@@ -65,15 +65,11 @@
         </div>
 
 
-        <form method="GET" class="maintenance-search">
-            <label for="mantenedor-busqueda">Buscar registros</label>
-            <div><input id="mantenedor-busqueda" type="search" name="q" value="{{ busqueda }}" maxlength="200" class="form-control" placeholder="Código, nombre o relación…"><button type="submit" class="btn btn-outline-primary">Buscar</button>{% if busqueda %}<a href="{% url listado_url %}" class="btn btn-outline-secondary">Limpiar</a>{% endif %}</div>
-        </form>
         {% if registros %}
 
             <div class="table-responsive">
 
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0 maintenance-datatable" data-maintainer="{{ clave_mantenedor }}">
 
                     <thead>
 

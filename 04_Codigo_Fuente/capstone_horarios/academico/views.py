@@ -727,6 +727,7 @@ def listado_generico(
         )
 
     context = {
+        "clave_mantenedor": clave,
         "titulo": config["titulo"],
         "descripcion": config["descripcion"],
         "columnas": [columna[0] for columna in config["columnas"]],

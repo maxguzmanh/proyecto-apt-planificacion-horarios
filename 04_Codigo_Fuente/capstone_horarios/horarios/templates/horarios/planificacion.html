@@ -5,34 +5,7 @@
 <div class="app-page planning-workspace">
     <div class="workspace-header">
         {% include "horarios/componentes/cabecera.html" with icono="calendario" titulo="Espacio de planificación" descripcion="Seleccione el contexto académico y consulte la programación semanal." only %}
-        <div class="page-heading-actions">
-                        <!-- EXPORTAR -->
 
-                        {% if perms.horarios.view_horario %}
-
-                            {% if sede %}
-
-                                <a
-                                    href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}"
-                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </a>
-
-                            {% else %}
-
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-success excel-export" title="Exportar planificación a Excel" aria-label="Exportar planificación a Excel"
-                                    disabled
-
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6v20h14V8l-6-6Zm0 0v6h6M9 11l6 8m0-8-6 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </button>
-
-                            {% endif %}
-                        {% endif %}
-        </div>
     </div>
 
     <section class="planning-panel planning-filter-panel" aria-labelledby="titulo-filtros">
@@ -43,9 +16,8 @@
               data-selected-centro="{{ centro_id }}" data-selected-sede="{{ sede_id }}"
               data-selected-facultad="{{ facultad_id }}" data-selected-programa="{{ programa_id }}"
               data-selected-periodo="{{ periodo_id }}" data-selected-semestre="{{ semestre_id }}"
-              data-selected-modalidad="{{ modalidad_id }}"
               data-url-facultades="{% url 'cargar_facultades' %}" data-url-programas="{% url 'cargar_programas' %}"
-              data-url-modalidades="{% url 'cargar_modalidades' %}" data-url-sedes="{% url 'cargar_sedes' %}"
+              data-url-sedes="{% url 'cargar_sedes' %}"
               data-url-periodos="{% url 'cargar_periodos' %}" data-url-semestres="{% url 'cargar_semestres' %}">
             <div class="planning-horizontal-filters">
                 <div class="enterprise-field">
@@ -56,6 +28,11 @@
                     </select>
                 </div>
                 <div class="enterprise-field">
+                    <label for="sede">Sede</label>
+                    <select id="sede" name="sede" class="form-select" required disabled aria-describedby="sede-ayuda"><option value="">Seleccione una sede...</option></select>
+                    <p id="sede-ayuda" class="form-help mt-1 mb-0">Selecciona la sede correspondiente a esta planificación.</p>
+                </div>
+                <div class="enterprise-field">
                     <label for="facultad">Facultad</label>
                     <select id="facultad" name="facultad" class="form-select" required disabled><option value="">Seleccione una facultad...</option></select>
                 </div>
@@ -64,21 +41,12 @@
                     <select id="programa" name="programa" class="form-select" required disabled><option value="">Seleccione un programa...</option></select>
                 </div>
                 <div class="enterprise-field">
-                    <label for="modalidad">Modalidad</label>
-                    <select id="modalidad" name="modalidad" class="form-select" required disabled><option value="">Seleccione una modalidad...</option></select>
-                </div>
-                <div class="enterprise-field">
-                    <label for="sede">Sede</label>
-                    <select id="sede" name="sede" class="form-select" required disabled aria-describedby="sede-ayuda"><option value="">Seleccione una sede...</option></select>
-                    <p id="sede-ayuda" class="form-help mt-1 mb-0" aria-live="polite" hidden></p>
-                </div>
-                <div class="enterprise-field">
                     <label for="periodo">Periodo Académico</label>
                     <select id="periodo" name="periodo" class="form-select" required disabled><option value="">Seleccione un periodo...</option></select>
                 </div>
             </div>
             <div class="planning-actions">
-                <div class="form-help">Complete los seis filtros del contexto y seleccione el semestre en el panel académico.</div>
+                <div class="form-help">Complete los cinco filtros del contexto y seleccione el semestre en el panel académico.</div>
                 <div class="d-flex gap-2">
                     <a href="{% url 'planificacion' %}" class="btn btn-outline-secondary">Limpiar filtros</a>
 
@@ -119,7 +87,7 @@
                                      data-horas="{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }}{% endif %}"
                                      aria-label="{{ docente.profesor }}, {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} horas pendientes{% else %}Sin carga{% endif %}. {% if perms.horarios.add_horario and oferta.profesor.activo %}Arrastrar al calendario o {% endif %}doble clic o Enter para ver detalle."
                                      title="{{ docente.profesor }} · {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h pendientes{% else %}Sin carga{% endif %}&#10;{% for bloque in docente.disponibilidad|slice:':2' %}{{ bloque.get_dia_display }} {{ bloque.hora_inicio|time:'H:i' }}–{{ bloque.hora_fin|time:'H:i' }}{% if not forloop.last %} · {% endif %}{% empty %}Disponibilidad no registrada{% endfor %}{% if docente.disponibilidad|length > 2 %} · …{% endif %}&#10;Doble clic para ver detalle">
-                                    <span class="teacher-compact-name">{{ docente.profesor }}</span>
+                                    <span class="teacher-compact-name">{{ docente.profesor }}<small class="teacher-offer-modality">{{ oferta.modalidad.nombre }}</small></span>
                                     <span class="teacher-hours-badge">{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h{% else %}Sin carga{% endif %}</span>
                                 </div>
                                 {% endfor %}
@@ -141,8 +109,8 @@
 
         <div class="alert alert-warning">
 
-            Seleccione Centro Tutorial, Facultad, Programa Académico,
-            Modalidad, Sede, Periodo y Semestre
+            Seleccione Centro Tutorial, Sede, Facultad, Programa Académico,
+            Periodo y Semestre
             para visualizar la planificación.
 
         </div>
@@ -183,7 +151,7 @@
                             · Semestre
                             {{ semestre.get_numero_display }}
 
-                            · {{ modalidad.nombre }} · {{ sede.nombre }} · {{ periodo.nombre }}
+                            · {{ sede.nombre }} · {{ periodo.nombre }}
 
                         </small>
 
@@ -237,7 +205,7 @@
                          data-aulas-base="{% url 'aulas_horario_calendario' 0 %}"
                          data-offer-base="{% url 'detalle_oferta_calendario' 0 %}"
                          data-can-create="{{ perms.horarios.add_horario|yesno:'true,false' }}"
-                         data-filters="{{ request.GET.urlencode }}"
+                         data-filters="{{ filtros_query }}"
                          data-reference-week="{{ semana_referencia }}"
                          data-can-edit="{{ perms.horarios.change_horario|yesno:'true,false' }}"
                          data-edit-base="{% url 'editar_asignacion' 0 %}"></div>

@@ -2,7 +2,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef, Q
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse, Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_GET
 from academico.models import PeriodoAcademico
@@ -10,6 +10,7 @@ from usuarios.roles import profesor_de_usuario, puede_dashboard, puede_mantenedo
 from .models import Horario, OfertaAcademica
 from .presentacion import horarios_con_contexto, evento_con_contexto
 from .calendario import SEMANA_REFERENCIA
+from .profesor_pdf import crear_pdf_horario_profesor, nombre_archivo_horario
 
 
 def periodos_del_profesor(profesor):
@@ -61,6 +62,31 @@ def profesor_eventos(request):
     except ValidationError as error: return JsonResponse({"errors":{"periodo_id":error.messages}},status=400)
     except Http404: return JsonResponse({"errors":{"periodo_id":["Periodo no disponible para su perfil."]}},status=404)
     return JsonResponse([evento_con_contexto(h) for h in horarios_del_profesor(profesor).filter(oferta__periodo=periodo)],safe=False)
+
+
+@login_required
+@require_GET
+def profesor_horario_pdf(request):
+    if puede_dashboard(request.user) or puede_mantenedores(request.user):
+        return redirect(destino_usuario(request.user))
+    profesor = profesor_de_usuario(request.user)
+    if profesor is None:
+        from usuarios.views import acceso_no_configurado
+        return acceso_no_configurado(request)
+    try:
+        periodo = periodo_solicitado(request, profesor)
+    except ValidationError as error:
+        return HttpResponseBadRequest(" ".join(error.messages))
+    orden_dias = {codigo: indice for indice, (codigo, _) in enumerate(Horario.DIAS)}
+    horarios = sorted(
+        horarios_del_profesor(profesor).filter(oferta__periodo=periodo),
+        key=lambda horario: (orden_dias[horario.dia], horario.hora_inicio, horario.pk),
+    )
+    contenido = crear_pdf_horario_profesor(profesor, periodo, horarios)
+    response = HttpResponse(contenido, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo_horario(profesor, periodo)}"'
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 @login_required
 @require_GET

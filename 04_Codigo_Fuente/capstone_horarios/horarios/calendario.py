@@ -2,10 +2,10 @@
 from datetime import date, datetime, timedelta
 
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, F, Q
+from django.db.models import Prefetch, F
 from django.shortcuts import get_object_or_404
 
-from academico.models import CentroTutorial, Facultad, PeriodoAcademico, ProgramaAcademico, ProgramaCentroTutorial, Sede, Semestre, PlanEstudioAsignatura, Aula, Modalidad
+from academico.models import CentroTutorial, Facultad, PeriodoAcademico, ProgramaAcademico, ProgramaCentroTutorial, Sede, Semestre, PlanEstudioAsignatura, Aula
 from .models import Grupo, Horario, OfertaAcademica
 
 SEMANA_REFERENCIA = date(2000, 1, 3)  # Lunes; la fecha no tiene significado académico.
@@ -19,20 +19,22 @@ def ofertas_de_programa(centro, programa):
     )
 
 
-def sedes_de_modalidad(centro, modalidad=None):
-    """Opciones visuales y contexto seguro mediante códigos estables existentes."""
-    sedes = Sede.objects.filter(centro_tutorial=centro, centro_tutorial__activo=True, activo=True)
-    if modalidad and modalidad.codigo == "VIR":
-        virtuales = sedes.filter(codigo="SEDE-VIR")
-        return virtuales if virtuales.count() == 1 else sedes.none()
-    if modalidad and modalidad.codigo == "PRE":
-        return sedes.exclude(codigo="SEDE-VIR")
-    return sedes
+def sedes_del_centro(centro):
+    return Sede.objects.filter(centro_tutorial=centro, centro_tutorial__activo=True, activo=True)
+
+
+def ofertas_compatibles_con_sede(ofertas, sede):
+    """La modalidad es un atributo de la oferta, nunca un filtro elegido."""
+    ofertas = ofertas.filter(modalidad__activo=True)
+    if sede.codigo == "SEDE-VIR":
+        return ofertas.exclude(modalidad__codigo="PRE")
+    return ofertas.exclude(modalidad__codigo="VIR")
+
 
 
 def resolver_contexto_calendario(parametros):
     ids = {}
-    for campo in ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"]:
+    for campo in ["centro", "facultad", "programa", "sede", "periodo", "semestre"]:
         try:
             ids[campo] = int(parametros.get(campo, ""))
             if ids[campo] <= 0:
@@ -44,22 +46,20 @@ def resolver_contexto_calendario(parametros):
     programa = get_object_or_404(ProgramaAcademico, pk=ids["programa"], facultad=facultad, activo=True)
     get_object_or_404(ProgramaCentroTutorial, programa=programa, centro_tutorial=centro, activo=True)
     ofertas = ofertas_de_programa(centro, programa)
-    modalidad = get_object_or_404(Modalidad, pk=ids["modalidad"], activo=True,
-        pk__in=ofertas.values("modalidad_id"))
-    sede = get_object_or_404(sedes_de_modalidad(centro, modalidad), pk=ids["sede"])
-    ofertas = ofertas.filter(modalidad=modalidad)
+    sede = get_object_or_404(sedes_del_centro(centro), pk=ids["sede"])
+    ofertas = ofertas_compatibles_con_sede(ofertas, sede)
     periodo = get_object_or_404(PeriodoAcademico, pk=ids["periodo"], activo=True,
         pk__in=ofertas.values("periodo_id"))
     semestre = get_object_or_404(Semestre.objects.distinct(), pk=ids["semestre"],
         grupos__centro_tutorial=centro, grupos__programa=programa, grupos__periodo=periodo,
         grupos__activo=True)
-    return dict(centro=centro, facultad=facultad, programa=programa, modalidad=modalidad,
+    return dict(centro=centro, facultad=facultad, programa=programa,
                 periodo=periodo, semestre=semestre, sede=sede)
 
 
-def horarios_del_contexto(centro, facultad, programa, modalidad, periodo, semestre, sede):
+def horarios_del_contexto(centro, facultad, programa, periodo, semestre, sede):
     horarios = Horario.objects.filter(
-        activo=True, oferta__activo=True, oferta__periodo=periodo, oferta__modalidad=modalidad,
+        activo=True, oferta__activo=True, oferta__periodo=periodo, oferta__modalidad__activo=True,
         oferta__grupos__centro_tutorial=centro, oferta__grupos__programa=programa,
         oferta__grupos__semestre=semestre, oferta__grupos__periodo=periodo, oferta__grupos__activo=True,
     )
@@ -107,8 +107,8 @@ def oferta_del_contexto(oferta_id, contexto, *, bloquear=False):
     ).prefetch_related("grupos__programa__facultad")
     if bloquear:
         ofertas = ofertas.select_for_update(of=("self",))
-    oferta = get_object_or_404(ofertas, pk=oferta_id, activo=True,
-        profesor__activo=True, asignatura__activo=True, periodo=contexto["periodo"], modalidad=contexto["modalidad"])
+    oferta = get_object_or_404(ofertas_compatibles_con_sede(ofertas, contexto["sede"]), pk=oferta_id, activo=True,
+        profesor__activo=True, asignatura__activo=True, periodo=contexto["periodo"], modalidad__activo=True)
     grupos = list(oferta.grupos.all())
     compatibles = [g for g in grupos if g.activo and
         g.centro_tutorial_id == contexto["centro"].pk and

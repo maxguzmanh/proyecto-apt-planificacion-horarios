@@ -104,7 +104,9 @@ class PanelAcademicoTests(TestCase):
         self.assertTrue(docentes)
         self.assertEqual(docentes[0]["horas_planificadas"], Decimal("4"))
         sala_sin_clases = Sede.objects.get(codigo="SEDE-VIR")
-        self.assertTrue(all(not t["profesores"] for t in self.panel(sede=sala_sin_clases)))
+        ofertas = [o for t in self.panel(sede=sala_sin_clases) for d in t["profesores"] for o in d["ofertas"]]
+        self.assertTrue(all(o.modalidad.codigo != "PRE" for o in ofertas))
+        self.assertTrue(any(o.modalidad.codigo == "HIB" for o in ofertas))
 
     def test_transversal_no_duplica_horas_y_grupos_del_contexto(self):
         g = Grupo.objects.get(programa__codigo="ING-INF", semestre__numero=1)

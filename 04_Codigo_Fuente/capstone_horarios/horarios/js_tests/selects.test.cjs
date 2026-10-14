@@ -4,8 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../static/horarios/js/selects.js"), "utf8");
-const orden = ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"];
-function setup(restaurar = false, modalidadCodigo = "PRE", sedeCodigo = "SEDE-ACA") {
+const orden = ["centro", "sede", "facultad", "programa", "periodo", "semestre"];
+function setup(restaurar = false, sedeCodigo = "SEDE-ACA") {
     const nodes = new Map();
     const calls = []; let submissions = 0;
     class Node {
@@ -19,7 +19,6 @@ function setup(restaurar = false, modalidadCodigo = "PRE", sedeCodigo = "SEDE-AC
         requestSubmit() { submissions++; }
     }
     orden.forEach(id => nodes.set(id, new Node()));
-    nodes.set("sede-ayuda", new Node());
     const form = new Node();
     form.dataset = {};
     orden.forEach((id, i) => {
@@ -28,12 +27,12 @@ function setup(restaurar = false, modalidadCodigo = "PRE", sedeCodigo = "SEDE-AC
         form.dataset["url" + mayuscula + (id === "facultad" ? "es" : "s")] = "/" + id;
     });
     Object.assign(form.dataset, { urlFacultades: "/facultad", urlProgramas: "/programa",
-        urlModalidades: "/modalidad", urlSedes: "/sede", urlPeriodos: "/periodo", urlSemestres: "/semestre" });
+        urlSedes: "/sede", urlPeriodos: "/periodo", urlSemestres: "/semestre" });
     nodes.set("filtros-planificacion", form);
     const fetch = async url => {
         calls.push(url);
         const campo = url.split("?")[0].slice(1);
-        return { ok: true, json: async () => [{ id: orden.indexOf(campo) + 1, nombre: campo, codigo: campo === "modalidad" ? modalidadCodigo : campo === "sede" ? sedeCodigo : "" }] };
+        return { ok: true, json: async () => [{ id: orden.indexOf(campo) + 1, nombre: campo, codigo: campo === "sede" ? sedeCodigo : "" }] };
     };
     vm.runInNewContext(source, { document: { getElementById: id => nodes.get(id),
         querySelector: () => null, createElement: () => new Node(), addEventListener: (_name, fn) => fn() },
@@ -51,24 +50,25 @@ test("solo habilita el siguiente filtro; Sede no se selecciona automáticamente"
         assert.equal(app.nodes.get(orden[i + 1]).value, "");
         for (let j = i + 2; j < orden.length; j++) assert.equal(app.nodes.get(orden[j]).disabled, true);
     }
-    assert.deepEqual(app.calls.map(url => url.split("?")[0]), ["/facultad", "/programa", "/modalidad", "/sede", "/periodo", "/semestre"]);
-    assert.match(app.calls[4], /sede=5/);
-    assert.match(app.calls[5], /periodo=6/);
+    assert.deepEqual(app.calls.map(url => url.split("?")[0]), ["/sede", "/facultad", "/programa", "/periodo", "/semestre"]);
+    assert.match(app.calls[3], /sede=2/);
+    assert.match(app.calls[4], /periodo=5/);
 });
 
 test("restaura contexto en orden y conserva Sede explícita", async () => {
     const app = setup(true);
     await new Promise(resolve => setImmediate(resolve));
-    assert.deepEqual(orden.map(id => app.nodes.get(id).value), ["1", "2", "3", "4", "5", "6", "7"]);
-    assert.deepEqual(app.calls.map(url => url.split("?")[0]), ["/facultad", "/programa", "/modalidad", "/sede", "/periodo", "/semestre"]);
+    assert.deepEqual(orden.map(id => app.nodes.get(id).value), ["1", "2", "3", "4", "5", "6"]);
+    assert.deepEqual(app.calls.map(url => url.split("?")[0]), ["/sede", "/facultad", "/programa", "/periodo", "/semestre"]);
 });
 
-test("cambiar modalidad limpia sede, periodo y semestre", async () => {
+test("cambiar programa conserva sede y limpia periodo y semestre", async () => {
     const app = setup(true);
     await new Promise(resolve => setImmediate(resolve));
-    await app.nodes.get("modalidad").listeners.change();
-    assert.equal(app.nodes.get("sede").value, "");
-    assert.equal(app.nodes.get("periodo").disabled, true);
+    await app.nodes.get("programa").listeners.change();
+    assert.equal(app.nodes.get("sede").value, "2");
+    assert.equal(app.nodes.get("periodo").disabled, false);
+    assert.equal(app.nodes.get("periodo").value, "");
     assert.equal(app.nodes.get("semestre").disabled, true);
 });
 
@@ -83,45 +83,32 @@ test("no permite aplicar un contexto incompleto", () => {
 test("contexto completo se aplica al seleccionar semestre", async () => { const a=setup(true); await new Promise(r=>setImmediate(r)); await a.nodes.get("semestre").listeners.change(); assert.equal(a.submissions(),1); });
 test("cambiar semestre vuelve a aplicar sin botón", async () => { const a=setup(true); await new Promise(r=>setImmediate(r)); a.nodes.get("semestre").value="8"; await a.nodes.get("semestre").listeners.change(); assert.equal(a.submissions(),1); });
 test("contexto incompleto no envía formulario", async () => { const a=setup(); a.nodes.get("centro").value="1"; await a.nodes.get("centro").listeners.change(); assert.equal(a.submissions(),0); });
-test("plantilla sin Aplicar filtros ni Nueva asignación y Excel accesible", () => { const html=fs.readFileSync(path.join(__dirname,"../templates/horarios/planificacion.html"),"utf8"); assert.ok(!html.includes("Aplicar filtros")); assert.ok(!html.includes("+ Nueva asignación")); assert.ok(html.includes("{% url 'exportar_excel' %}?{{ request.GET.urlencode }}")); assert.ok(html.includes('aria-label="Exportar planificación a Excel"')); assert.ok(html.includes("<svg")); });
+test("plantilla sin Aplicar filtros, Nueva asignación ni exportación redundante", () => { const html=fs.readFileSync(path.join(__dirname,"../templates/horarios/planificacion.html"),"utf8"); assert.ok(!html.includes("Aplicar filtros")); assert.ok(!html.includes("+ Nueva asignación")); assert.ok(!html.includes("excel-export")); });
 
-test("Virtual elige SEDE-VIR y carga automáticamente periodos", async()=>{const a=setup(true,"VIR","SEDE-VIR");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"5");assert.equal(a.nodes.get("periodo").disabled,false);assert.ok(a.calls.at(-1).startsWith("/periodo"));});
-test("Híbrida mantiene selección manual de sede",async()=>{const a=setup(true,"HIB");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"");assert.equal(a.nodes.get("periodo").disabled,true);});
-test("Virtual sin código estable no inventa Campus Virtual",async()=>{const a=setup(true,"VIR","OTRA");await new Promise(r=>setImmediate(r));await a.nodes.get("modalidad").listeners.change();assert.equal(a.nodes.get("sede").value,"");assert.equal(a.nodes.get("periodo").disabled,true);});
 
-test("Presencial no muestra SEDE-VIR incluso ante respuesta incompatible",async()=>{const a=setup(true,"PRE","SEDE-VIR");await new Promise(r=>setImmediate(r));assert.equal(a.nodes.get("sede").disabled,true);assert.equal(a.nodes.get("sede").options.length,1);});
-
-for (const [codigo, sede, mensaje] of [
-    ["PRE", "SEDE-ACA", "Selecciona la sede física donde se realizará la planificación."],
-    ["VIR", "SEDE-VIR", "Campus Virtual seleccionado automáticamente para la modalidad virtual."],
-    ["HIB", "SEDE-ACA", "Modalidad híbrida: selecciona la ubicación correspondiente a esta planificación, ya sea una sede física o Campus Virtual."]
-]) {
-    test(`ayuda de Sede para ${codigo} al restaurar y cambiar modalidad`, async () => {
-        const app = setup(true, codigo, sede);
-        await new Promise(resolve => setImmediate(resolve));
-        const ayuda = app.nodes.get("sede-ayuda");
-        assert.equal(ayuda.textContent, mensaje);
-        assert.equal(ayuda.hidden, false);
-        await app.nodes.get("modalidad").listeners.change();
-        assert.equal(ayuda.textContent, mensaje);
-        assert.equal(ayuda.hidden, false);
-    });
-}
-test("limpiar contexto elimina ayuda de modalidad anterior", async () => {
-    const app = setup(true, "HIB");
+test("Centro Tutorial carga Sede sin pedir modalidad", async () => {
+    const app = setup(true);
     await new Promise(resolve => setImmediate(resolve));
-    await app.nodes.get("programa").listeners.change();
-    assert.equal(app.nodes.get("sede-ayuda").textContent, "");
-    assert.equal(app.nodes.get("sede-ayuda").hidden, true);
+    await app.nodes.get("centro").listeners.change();
+    assert.ok(app.calls.at(-1).startsWith("/sede?"));
+    assert.ok(app.calls.every(url => !url.includes("modalidad")));
+    assert.equal(app.nodes.has("modalidad"), false);
 });
-test("Virtual sin Campus no anuncia selección automática", async () => {
-    const app = setup(true, "VIR", "OTRA");
+test("Campus Virtual exige elección explícita como cualquier sede", async () => {
+    const app = setup(true, "SEDE-VIR");
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(app.nodes.get("sede-ayuda").textContent, "");
-    assert.equal(app.nodes.get("sede-ayuda").hidden, true);
+    await app.nodes.get("centro").listeners.change();
+    assert.equal(app.nodes.get("sede").value, "");
+    assert.equal(app.nodes.get("periodo").disabled, true);
+    app.nodes.get("sede").value = "2";
+    await app.nodes.get("sede").listeners.change();
+    assert.equal(app.nodes.get("facultad").disabled, false);
+    assert.equal(app.nodes.get("periodo").disabled, true);
 });
-test("Sede tiene ayuda accesible discreta debajo del selector", () => {
+test("plantilla sin selector ni dependencia de modalidad", () => {
     const html = fs.readFileSync(path.join(__dirname, "../templates/horarios/planificacion.html"), "utf8");
-    assert.match(html, /id="sede"[^>]*aria-describedby="sede-ayuda"/);
-    assert.match(html, /<p id="sede-ayuda" class="form-help mt-1 mb-0" aria-live="polite" hidden>/);
+    assert.ok(!html.includes('id="modalidad"'));
+    assert.ok(!html.includes("data-selected-modalidad"));
+    assert.ok(!html.includes("data-url-modalidades"));
+    assert.ok(html.includes("{{ oferta.modalidad.nombre }}"));
 });

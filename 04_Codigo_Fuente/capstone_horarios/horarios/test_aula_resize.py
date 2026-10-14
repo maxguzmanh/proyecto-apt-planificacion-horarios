@@ -256,7 +256,7 @@ class AulaPendienteResizeTests(DatosDocencia, TestCase):
         h = self.nuevo()
         response = self.client.get(reverse("editar_asignacion", args=[h.pk]), {"sede": self.aula.sede_id})
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(reverse("exportar_excel"), self.filtros)
+        response = self.client.get(reverse("exportar_excel"), {**self.filtros, "nivel": "periodo"})
         self.assertEqual(response.status_code, 200)
         from io import BytesIO
         from openpyxl import load_workbook

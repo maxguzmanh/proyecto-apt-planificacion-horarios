@@ -52,7 +52,7 @@ class CalendarioTests(TestCase):
         self.assertEqual(response.status_code, 200)
         ids = {int(e["id"]) for e in response.json()}
         esperados = set(Horario.objects.filter(oferta__grupos__programa=self.grupo.programa, oferta__grupos__semestre=self.grupo.semestre,
-            oferta__modalidad_id=self.filtros["modalidad"], aula__sede_id=self.filtros["sede"]).values_list("pk", flat=True))
+            aula__sede_id=self.filtros["sede"]).values_list("pk", flat=True))
         self.assertEqual(ids, esperados)
         self.assertEqual(len(response.json()), len(ids))
 

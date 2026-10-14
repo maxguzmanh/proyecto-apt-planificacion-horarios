@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 import json
 from datetime import date, datetime
 
@@ -9,9 +10,6 @@ from django.db.models import Prefetch, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
-
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
 
 from academico.choices import DiaSemana
 
@@ -35,7 +33,8 @@ from .services import (obtener_panel_academico, obtener_resumen_docente,
     calcular_horas_planificadas, obtener_carga_activa, calcular_horas_pendientes, operacion_planificacion)
 from .forms import HorarioForm, NuevaAsignacionForm, MoverHorarioForm, CrearHorarioOfertaForm, AsignarAulaHorarioForm
 from .presentacion import respuesta_error
-from .calendario import sedes_de_modalidad, SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
+from .calendario import sedes_del_centro, ofertas_compatibles_con_sede, SEMANA_REFERENCIA, horarios_del_contexto, resolver_contexto_calendario, serializar_evento, oferta_del_contexto, aulas_del_contexto, ofertas_de_programa
+from .contexto_academico import facultades_del_centro, programas_del_centro, semestres_del_programa
 from .models import (
     Grupo,
     Horario,
@@ -139,12 +138,11 @@ def planificacion(request):
     programa_id = request.GET.get("programa", "").strip()
     periodo_id = request.GET.get("periodo", "").strip()
     semestre_id = request.GET.get("semestre", "").strip()
-    modalidad_id = request.GET.get("modalidad", "").strip()
 
     # ======================================================
     # FILTROS OBLIGATORIOS
     #
-    # Modalidad y Sede forman parte del contexto obligatorio.
+    # Sede forma parte del contexto obligatorio; modalidad pertenece a la oferta.
     # ======================================================
 
     filtros_completos = all(
@@ -152,7 +150,6 @@ def planificacion(request):
             centro_id,
             facultad_id,
             programa_id,
-            modalidad_id,
             sede_id,
             periodo_id,
             semestre_id,
@@ -169,7 +166,6 @@ def planificacion(request):
     programa = None
     periodo = None
     semestre = None
-    modalidad = None
 
     horarios = []
 
@@ -184,17 +180,18 @@ def planificacion(request):
             raise Http404("Filtros de planificación inválidos.") from error
         centro, facultad, programa = contexto["centro"], contexto["facultad"], contexto["programa"]
         periodo, semestre = contexto["periodo"], contexto["semestre"]
-        sede, modalidad = contexto["sede"], contexto["modalidad"]
+        sede = contexto["sede"]
         horarios = list(horarios_del_contexto(**contexto))
 
     asignaturas_semestre = []
     if filtros_completos:
         asignaturas_semestre = obtener_panel_academico(
-            programa, semestre, centro, periodo, sede=sede, modalidad=modalidad,
+            programa, semestre, centro, periodo, sede=sede,
         )
 
     context = {
         "asignaturas_semestre": asignaturas_semestre,
+        "filtros_query": urlencode({k: request.GET[k] for k in ["centro", "facultad", "programa", "sede", "periodo", "semestre"] if request.GET.get(k)}),
         # Datos iniciales
         "centros": (CentroTutorial.objects.filter(activo=True).order_by("nombre")),
         # Objetos seleccionados
@@ -204,7 +201,6 @@ def planificacion(request):
         "programa": programa,
         "periodo": periodo,
         "semestre": semestre,
-        "modalidad": modalidad,
         # IDs seleccionados
         "centro_id": centro_id,
         "sede_id": sede_id,
@@ -212,7 +208,6 @@ def planificacion(request):
         "programa_id": programa_id,
         "periodo_id": periodo_id,
         "semestre_id": semestre_id,
-        "modalidad_id": modalidad_id,
         # Estado
         "filtros_completos": filtros_completos,
         "hay_horarios": bool(horarios),
@@ -237,13 +232,7 @@ def cargar_sedes(request):
     centro_id = request.GET.get("centro")
     if not centro_id or not centro_id.isdigit():
         return JsonResponse([], safe=False)
-    modalidad = None
-    modalidad_id = request.GET.get("modalidad")
-    if modalidad_id:
-        if not modalidad_id.isdigit(): return JsonResponse([], safe=False)
-        modalidad = Modalidad.objects.filter(pk=modalidad_id, activo=True).first()
-        if modalidad is None: return JsonResponse([], safe=False)
-    sedes = sedes_de_modalidad(centro_id, modalidad).order_by("nombre").values("id", "nombre", "codigo")
+    sedes = sedes_del_centro(centro_id).order_by("nombre").values("id", "nombre", "codigo")
     return JsonResponse(list(sedes), safe=False)
 
 
@@ -306,19 +295,7 @@ def cargar_facultades(request):
     if not centro_id:
         return JsonResponse([], safe=False)
 
-    facultades = (
-        Facultad.objects.filter(
-            activo=True,
-            programas_academicos__activo=True,
-            programas_academicos__centros_tutoriales__centro_tutorial_id=centro_id,
-            programas_academicos__centros_tutoriales__activo=True,
-        )
-        .distinct()
-        .values(
-            "id",
-            "nombre",
-        )
-    )
+    facultades = facultades_del_centro(centro_id).values("id", "nombre")
 
     return JsonResponse(
         list(facultades),
@@ -339,21 +316,7 @@ def cargar_programas(request):
             .first()
         )
 
-    programas = ProgramaAcademico.objects.filter(
-        facultad_id=facultad_id,
-        activo=True,
-    )
-
-    if centro_id:
-        programas = programas.filter(
-            centros_tutoriales__centro_tutorial_id=centro_id,
-            centros_tutoriales__activo=True,
-        )
-
-    programas = programas.distinct().values(
-        "id",
-        "nombre",
-    )
+    programas = programas_del_centro(centro_id, facultad_id).values("id", "nombre")
 
     return JsonResponse(
         list(programas),
@@ -362,12 +325,13 @@ def cargar_programas(request):
 
 
 def ofertas_para_selects(request):
-    valores = {campo: request.GET.get(campo, "") for campo in ["centro", "programa", "modalidad", "sede"]}
+    valores = {campo: request.GET.get(campo, "") for campo in ["centro", "programa", "sede"]}
     if not all(valor.isdigit() and int(valor) > 0 for valor in valores.values()):
         return OfertaAcademica.objects.none()
-    if not Sede.objects.filter(pk=valores["sede"], centro_tutorial_id=valores["centro"], activo=True).exists():
+    sede = sedes_del_centro(valores["centro"]).filter(pk=valores["sede"]).first()
+    if sede is None:
         return OfertaAcademica.objects.none()
-    return ofertas_de_programa(valores["centro"], valores["programa"]).filter(modalidad_id=valores["modalidad"])
+    return ofertas_compatibles_con_sede(ofertas_de_programa(valores["centro"], valores["programa"]), sede)
 
 
 @login_required
@@ -383,10 +347,7 @@ def cargar_semestres(request):
     ofertas = ofertas_para_selects(request)
     if not periodo_id.isdigit() or not ofertas.filter(periodo_id=periodo_id).exists():
         return JsonResponse([], safe=False)
-    semestres = Semestre.objects.filter(
-        grupos__centro_tutorial_id=request.GET["centro"], grupos__programa_id=request.GET["programa"],
-        grupos__periodo_id=periodo_id, grupos__activo=True,
-    ).distinct().order_by("numero")
+    semestres = semestres_del_programa(request.GET["centro"], request.GET["programa"], periodo_id)
     return JsonResponse([{"id": s.pk, "numero": s.numero, "nombre": s.get_numero_display()} for s in semestres], safe=False)
 
 
@@ -1104,280 +1065,6 @@ def eliminar_asignacion(
         "horarios/eliminar_asignacion.html",
         context,
     )
-
-
-# ==========================================================
-# EXPORTAR PROGRAMACIÓN A EXCEL
-# ESTRUCTURA BASADA EN EL ARCHIVO REAL DE LA UNIVERSIDAD
-# ==========================================================
-
-
-@login_required
-@permission_required(
-    "horarios.view_horario",
-    raise_exception=True,
-)
-def exportar_excel(request):
-    centro_id = request.GET.get("centro")
-    sede_id = request.GET.get("sede")
-    facultad_id = request.GET.get("facultad")
-    programa_id = request.GET.get("programa") or request.GET.get("carrera")
-    periodo_id = request.GET.get("periodo")
-    semestre_id = request.GET.get("semestre")
-    asignatura_id = request.GET.get("asignatura")
-    profesor_id = request.GET.get("profesor")
-    modalidad_id = request.GET.get("modalidad")
-    grupo_id = request.GET.get("grupo")
-    aula_id = request.GET.get("aula")
-    area_id = request.GET.get("area")
-    dia = request.GET.get("dia")
-
-    horarios_exportacion = Horario.objects.filter(
-        activo=True,
-    ).select_related(
-        "aula",
-        "aula__sede", "sede",
-    )
-
-    if sede_id:
-        horarios_exportacion = horarios_exportacion.filter(sede_id=sede_id)
-
-    if aula_id:
-        horarios_exportacion = horarios_exportacion.filter(aula_id=aula_id)
-
-    if dia:
-        horarios_exportacion = horarios_exportacion.filter(dia=dia)
-
-    ofertas_grupo = OfertaGrupo.objects.filter(
-        oferta__activo=True,
-        grupo__activo=True,
-        oferta__horarios__activo=True,
-    )
-
-    if centro_id:
-        ofertas_grupo = ofertas_grupo.filter(grupo__centro_tutorial_id=centro_id)
-
-    if facultad_id:
-        ofertas_grupo = ofertas_grupo.filter(grupo__programa__facultad_id=facultad_id)
-
-    if programa_id:
-        ofertas_grupo = ofertas_grupo.filter(grupo__programa_id=programa_id)
-
-    if periodo_id:
-        ofertas_grupo = ofertas_grupo.filter(
-            oferta__periodo_id=periodo_id,
-            grupo__periodo_id=periodo_id,
-        )
-
-    if semestre_id:
-        ofertas_grupo = ofertas_grupo.filter(grupo__semestre_id=semestre_id)
-
-    if asignatura_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__asignatura_id=asignatura_id)
-
-    if profesor_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__profesor_id=profesor_id)
-
-    if modalidad_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__modalidad_id=modalidad_id)
-
-    if grupo_id:
-        ofertas_grupo = ofertas_grupo.filter(grupo_id=grupo_id)
-
-    if sede_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__sede_id=sede_id)
-
-    if aula_id:
-        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__aula_id=aula_id)
-
-    if dia:
-        ofertas_grupo = ofertas_grupo.filter(oferta__horarios__dia=dia)
-
-    ofertas_grupo = (
-        ofertas_grupo.select_related(
-            "oferta",
-            "oferta__asignatura",
-            "oferta__profesor",
-            "oferta__periodo",
-            "oferta__modalidad",
-            "grupo",
-            "grupo__centro_tutorial",
-            "grupo__programa",
-            "grupo__programa__facultad",
-            "grupo__semestre",
-        )
-        .prefetch_related(
-            Prefetch(
-                "oferta__horarios",
-                queryset=horarios_exportacion,
-                to_attr="horarios_exportacion",
-            )
-        )
-        .distinct()
-        .order_by(
-            "grupo__centro_tutorial__nombre",
-            "grupo__programa__nombre",
-            "grupo__semestre__numero",
-            "oferta__asignatura__nombre",
-            "grupo__codigo",
-        )
-    )
-
-    planes = PlanEstudioAsignatura.objects.filter(
-        activo=True,
-    ).select_related(
-        "area_academica",
-    )
-
-    if programa_id:
-        planes = planes.filter(programa_id=programa_id)
-
-    if semestre_id:
-        planes = planes.filter(semestre_id=semestre_id)
-
-    if asignatura_id:
-        planes = planes.filter(asignatura_id=asignatura_id)
-
-    mapa_planes = {
-        (
-            plan.programa_id,
-            plan.asignatura_id,
-            plan.semestre_id,
-        ): plan
-        for plan in planes
-    }
-
-    workbook = Workbook()
-    hoja = workbook.active
-    hoja.title = "PROGRAMACIÓN"
-
-    encabezados = [
-        "Lugar de Desarrollo y/o Centro Tutorial",
-        "Facultad",
-        "Modalidad",
-        "Programa Académico",
-        "SEM",
-        "Asignatura",
-        "Grupo",
-        "Cupos",
-        "# Créditos",
-        "Profesor",
-        "Día",
-        "Hora inicio",
-        "Hora final",
-        "Aula",
-        "Sede",
-        "Área Académica",
-    ]
-
-    for columna, encabezado in enumerate(encabezados, start=1):
-        celda = hoja.cell(
-            row=1,
-            column=columna,
-            value=encabezado,
-        )
-
-        celda.font = Font(
-            bold=True,
-            color="FFFFFF",
-        )
-
-        celda.fill = PatternFill(
-            fill_type="solid",
-            fgColor="212529",
-        )
-
-        celda.alignment = Alignment(
-            horizontal="center",
-            vertical="center",
-            wrap_text=True,
-        )
-
-    fila_actual = 2
-
-    for oferta_grupo in ofertas_grupo:
-        oferta = oferta_grupo.oferta
-        grupo = oferta_grupo.grupo
-
-        plan = mapa_planes.get(
-            (
-                grupo.programa_id,
-                oferta.asignatura_id,
-                grupo.semestre_id,
-            )
-        )
-
-        if area_id:
-            if not plan or str(plan.area_academica_id) != str(area_id):
-                continue
-
-        for horario in oferta.horarios_exportacion:
-            valores = [
-                grupo.centro_tutorial.nombre,
-                grupo.programa.facultad.nombre,
-                oferta.modalidad.nombre,
-                grupo.programa.nombre,
-                grupo.semestre.get_numero_display(),
-                oferta.asignatura.nombre,
-                grupo.codigo,
-                oferta_grupo.cupos,
-                plan.creditos if plan else "",
-                str(oferta.profesor),
-                horario.get_dia_display(),
-                horario.hora_inicio.strftime("%H:%M"),
-                horario.hora_fin.strftime("%H:%M"),
-                horario.aula.nombre if horario.aula_id else "Aula pendiente",
-                horario.sede.nombre,
-                (plan.area_academica.nombre if plan and plan.area_academica else ""),
-            ]
-
-            for columna, valor in enumerate(valores, start=1):
-                hoja.cell(
-                    row=fila_actual,
-                    column=columna,
-                    value=valor,
-                )
-
-            fila_actual += 1
-
-    anchos = {
-        "A": 35,
-        "B": 25,
-        "C": 18,
-        "D": 32,
-        "E": 10,
-        "F": 38,
-        "G": 18,
-        "H": 10,
-        "I": 12,
-        "J": 30,
-        "K": 15,
-        "L": 14,
-        "M": 14,
-        "N": 18,
-        "O": 25,
-        "P": 25,
-    }
-
-    for columna, ancho in anchos.items():
-        hoja.column_dimensions[columna].width = ancho
-
-    hoja.freeze_panes = "A2"
-    hoja.auto_filter.ref = f"A1:P{max(1, fila_actual - 1)}"
-
-    nombre_archivo = "programacion_horarios.xlsx"
-
-    response = HttpResponse(
-        content_type=(
-            "application/" "vnd.openxmlformats-officedocument." "spreadsheetml.sheet"
-        )
-    )
-
-    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
-
-    workbook.save(response)
-
-    return response
 
 
 @require_GET

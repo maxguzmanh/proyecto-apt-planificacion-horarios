@@ -22,7 +22,7 @@ class ContextoPlanificacionTests(TestCase):
         cls.horario = Horario.objects.select_related("oferta__profesor", "oferta__periodo", "oferta__asignatura", "oferta__modalidad", "aula__sede").get(oferta__asignatura__codigo="PROGWEB01")
         cls.grupo = cls.horario.oferta.grupos.select_related("programa__facultad").get()
         cls.filtros = {"centro": str(cls.grupo.centro_tutorial_id), "facultad": str(cls.grupo.programa.facultad_id),
-            "programa": str(cls.grupo.programa_id), "modalidad": str(cls.horario.oferta.modalidad_id),
+            "programa": str(cls.grupo.programa_id),
             "sede": str(cls.horario.aula.sede_id), "periodo": str(cls.grupo.periodo_id), "semestre": str(cls.grupo.semestre_id)}
 
     def setUp(self):
@@ -46,10 +46,11 @@ class ContextoPlanificacionTests(TestCase):
     def test_orden_filtros_sin_todas_sedes_ni_grupo(self):
         response = self.client.get(reverse("planificacion"), self.filtros)
         contenido = response.content.decode()
-        posiciones = [contenido.index(f'id="{campo}"') for campo in ["centro", "facultad", "programa", "modalidad", "sede", "periodo", "semestre"]]
+        posiciones = [contenido.index(f'id="{campo}"') for campo in ["centro", "sede", "facultad", "programa", "periodo", "semestre"]]
         self.assertEqual(posiciones, sorted(posiciones))
         self.assertNotContains(response, "Todas las sedes")
         self.assertNotContains(response, 'name="grupo"')
+        self.assertNotContains(response, 'name="modalidad"')
         self.assertContains(response, 'id="sede" name="sede" class="form-select" required')
         self.assertContains(response, 'form="filtros-planificacion"')
 
@@ -106,17 +107,16 @@ class ContextoPlanificacionTests(TestCase):
         self.horario.refresh_from_db()
         self.assertEqual(self.horario.dia, "LU")
         contexto = resolver_contexto_calendario(self.filtros)
-        tarjetas = obtener_panel_academico(contexto["programa"], contexto["semestre"], contexto["centro"], contexto["periodo"], sede=contexto["sede"], modalidad=contexto["modalidad"])
+        tarjetas = obtener_panel_academico(contexto["programa"], contexto["semestre"], contexto["centro"], contexto["periodo"], sede=contexto["sede"])
         docente = next(d for t in tarjetas for d in t["profesores"] if d["profesor"].pk == self.horario.oferta.profesor_id)
         self.assertEqual(docente["horas_planificadas"], 6)
         self.assertEqual(len(docente["disponibilidad"]), 7)
 
-    def test_modalidades_y_periodos_filtrados_por_ofertas(self):
-        modalidades = self.client.get(reverse("cargar_modalidades"), self.filtros).json()
-        self.assertEqual({m["id"] for m in modalidades}, set(Modalidad.objects.filter(codigo__in=["PRE", "VIR", "HIB"]).values_list("pk", flat=True)))
-        no_ofrecida = Modalidad.objects.create(codigo="NO-OFERTA", nombre="Modalidad no ofrecida")
-        self.assertEqual(self.client.get(reverse("cargar_periodos"), dict(self.filtros, modalidad=no_ofrecida.pk)).json(), [])
-        self.assertEqual(self.client.get(reverse("eventos_calendario"), dict(self.filtros, modalidad=no_ofrecida.pk)).status_code, 404)
+    def test_periodos_por_contexto_sin_modalidad(self):
+        datos = self.client.get(reverse("cargar_periodos"), self.filtros).json()
+        self.assertIn(self.grupo.periodo_id, {p["id"] for p in datos})
+        # URLs guardadas con modalidad dejan de recortar el contexto.
+        self.assertEqual(self.client.get(reverse("cargar_periodos"), dict(self.filtros, modalidad="999999")).json(), datos)
         self.assertEqual(self.client.get(reverse("cargar_periodos"), {k: v for k, v in self.filtros.items() if k != "sede"}).json(), [])
 
     def test_semestres_despues_del_contexto(self):
@@ -124,19 +124,51 @@ class ContextoPlanificacionTests(TestCase):
         datos = self.client.get(reverse("cargar_semestres"), self.filtros).json()
         self.assertEqual({s["numero"] for s in datos}, {1, 5})
 
-    def test_modalidad_filtra_eventos_y_ofertas(self):
+    def test_contexto_muestra_presencial_e_hibrida(self):
         response = self.client.get(reverse("eventos_calendario"), self.filtros)
-        self.assertTrue(all(e["extendedProps"]["modalidad"] == "Presencial" for e in response.json()))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual({e["extendedProps"]["modalidad"] for e in response.json()}, {"Presencial", "Híbrida"})
         oferta_hibrida = OfertaAcademica.objects.get(asignatura__codigo="ARQ01")
         datos = {"oferta_id": oferta_hibrida.pk, "aula_id": self.horario.aula_id, "dia": "JU", "hora_inicio": "08:00", "hora_fin": "10:00"}
         response = self.client.post(reverse("crear_horario_oferta") + "?" + urlencode(self.filtros), json.dumps(datos), content_type="application/json")
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.json()["event"]["extendedProps"]["modalidad"], "Híbrida")
 
     def test_virtual_exige_campus_explicito(self):
         grupo = Grupo.objects.get(programa__codigo="ING-INF", semestre__numero=1)
-        filtros = dict(self.filtros, modalidad=str(Modalidad.objects.get(codigo="VIR").pk), semestre=str(grupo.semestre_id), sede=str(Sede.objects.get(codigo="SEDE-VIR").pk))
+        filtros = dict(self.filtros, semestre=str(grupo.semestre_id), sede=str(Sede.objects.get(codigo="SEDE-VIR").pk))
         response = self.client.get(reverse("eventos_calendario"), filtros)
         self.assertEqual(response.status_code, 200)
         self.assertEqual([e["title"] for e in response.json()], ["Competencias Digitales"])
         filtros.pop("sede")
         self.assertEqual(self.client.get(reverse("eventos_calendario"), filtros).status_code, 400)
+
+    def test_modalidad_antigua_no_filtra_eventos(self):
+        eventos = self.client.get(reverse("eventos_calendario"), self.filtros).json()
+        self.assertEqual(self.client.get(reverse("eventos_calendario"), dict(self.filtros, modalidad="invalida")).json(), eventos)
+
+    def test_ofertas_sin_horario_de_modalidades_compatibles(self):
+        oferta = OfertaAcademica.objects.get(asignatura__codigo="ARQ01")
+        # No depende de que la oferta ya tenga un Horario en esta sede.
+        for horario in oferta.horarios.all():
+            horario.delete()
+        response = self.client.get(reverse("planificacion"), self.filtros)
+        ofertas = [o.pk for t in response.context["asignaturas_semestre"] for d in t["profesores"] for o in d["ofertas"]]
+        self.assertIn(oferta.pk, ofertas)
+
+    def test_sedes_no_dependen_de_parametro_modalidad(self):
+        datos = self.client.get(reverse("cargar_sedes"), self.filtros).json()
+        self.assertIn("SEDE-VIR", {s["codigo"] for s in datos})
+        self.assertEqual(self.client.get(reverse("cargar_sedes"), dict(self.filtros, modalidad="invalida")).json(), datos)
+
+    def test_modalidad_real_preserva_compatibilidad_sede(self):
+        filtros = dict(self.filtros, sede=Sede.objects.get(codigo="SEDE-VIR").pk)
+        cantidad = Horario.objects.count()
+        self.assertEqual(self.crear(filtros).status_code, 404)
+        self.assertEqual(Horario.objects.count(), cantidad)
+
+    def test_urls_renderizadas_sin_modalidad_antigua(self):
+        response = self.client.get(reverse("planificacion"), dict(self.filtros, modalidad="999999"))
+        self.assertNotContains(response, "modalidad=999999")
+        self.assertNotIn("modalidad", response.context["filtros_query"])
+        self.assertTrue(response.context["filtros_completos"])

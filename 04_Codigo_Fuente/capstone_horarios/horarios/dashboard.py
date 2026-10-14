@@ -13,7 +13,7 @@ def enlace_planificacion(oferta, sede=None):
     if not grupos: return reverse("planificacion")
     g=grupos[0]
     params={"centro":g.centro_tutorial_id,"facultad":g.programa.facultad_id,"programa":g.programa_id,
-        "modalidad":oferta.modalidad_id,"periodo":oferta.periodo_id,"semestre":g.semestre_id}
+        "periodo":oferta.periodo_id,"semestre":g.semestre_id}
     if sede: params["sede"]=sede.pk
     return reverse("planificacion")+"?"+urlencode(params)
 
