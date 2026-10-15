@@ -1,0 +1,49 @@
+<div class="modal fade" id="crear-horario-modal" tabindex="-1" aria-labelledby="crear-horario-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><div class="panel-kicker">NUEVO BLOQUE SEMANAL</div><h2 class="modal-title fs-5" id="crear-horario-titulo">Confirmar horario</h2></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancelar"></button>
+            </div>
+            <form id="crear-horario-form">
+                <div class="modal-body">
+                    <div id="crear-horario-error" class="alert alert-danger" role="alert" hidden></div>
+                    <p id="crear-horario-cargando" class="text-secondary small" role="status">Consultando la oferta…</p>
+                    <dl class="offer-confirmation-details">
+                        <div><dt>Asignatura</dt><dd id="confirmar-asignatura"></dd></div>
+                        <div><dt>Profesor</dt><dd id="confirmar-profesor"></dd></div>
+                        <div><dt>Grupos</dt><dd id="confirmar-grupos"></dd></div>
+                        <div><dt>Modalidad</dt><dd id="confirmar-modalidad"></dd></div>
+                        <div><dt>Horario propuesto</dt><dd id="confirmar-inicio"></dd></div>
+                    </dl>
+                    <div class="offer-confirmation-workload">
+                        <p class="small text-secondary mb-2">Horas semanales del profesor en el periodo</p>
+                        <dl class="subject-hours">
+                            <div><dt>Carga asignada</dt><dd id="confirmar-carga"></dd></div>
+                            <div><dt>Horas planificadas</dt><dd id="confirmar-planificadas"></dd></div>
+                            <div><dt>Horas pendientes</dt><dd id="confirmar-pendientes"></dd></div>
+                        </dl>
+                        <div class="subject-section-label mt-3">Disponibilidad registrada</div>
+                        <ul id="confirmar-disponibilidad" class="subject-availability-list"></ul>
+                    </div>
+                    <div class="enterprise-field mt-3">
+                        <label for="confirmar-aula">Aula</label>
+                        <select id="confirmar-aula" name="aula_id" class="form-select" required disabled><option value="">Seleccione un aula…</option></select>
+                    </div>
+                    <p class="form-help mt-3">Se propone una duración de 1 hora. Elija el aula y confirme.</p>
+                    <details id="ajustar-hora-fin" class="creation-time-options">
+                        <summary>Ajustar hora final (opcional)</summary>
+                        <div class="enterprise-field mt-2">
+                            <label for="confirmar-hora-fin">Hora final</label>
+                            <input id="confirmar-hora-fin" name="hora_fin" type="time" step="60" class="form-control" disabled>
+                        </div>
+                    </details>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button id="confirmar-guardar" type="submit" class="btn-enterprise-primary" disabled>Crear horario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -12,21 +12,7 @@
 
     <div class="workspace-header">
 
-        <div>
-
-            <div class="workspace-eyebrow">
-                MANTENEDORES
-            </div>
-
-            <h1 class="workspace-title">
-                {{ titulo }}
-            </h1>
-
-            <p class="workspace-description">
-                {{ descripcion }}
-            </p>
-
-        </div>
+        {% include "horarios/componentes/cabecera.html" with icono="mantenedores" titulo=titulo descripcion=descripcion only %}
 
 
         <div class="d-flex gap-2">
@@ -73,7 +59,7 @@
 
 
             <div class="text-secondary small">
-                Total: {{ registros|length }}
+                Total: {{ total_registros }}{% if busqueda %} · Resultados: {{ registros|length }}{% endif %}
             </div>
 
         </div>
@@ -83,7 +69,7 @@
 
             <div class="table-responsive">
 
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0 maintenance-datatable" data-maintainer="{{ clave_mantenedor }}">
 
                     <thead>
 
@@ -227,12 +213,11 @@
                 <div class="text-center py-5">
 
                     <div class="fw-semibold mb-2">
-                        No existen registros
+                        {% if busqueda %}No se encontraron registros{% else %}No existen registros{% endif %}
                     </div>
 
                     <div class="text-secondary small mb-4">
-                        Todavía no existen registros
-                        en este mantenedor.
+                        {% if busqueda %}Pruebe otro término de búsqueda.{% else %}Todavía no existen registros en este mantenedor.{% endif %}
                     </div>
 
 

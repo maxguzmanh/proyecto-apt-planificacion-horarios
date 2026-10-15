@@ -1,10 +1,14 @@
+from datetime import time
+
 from django.contrib import messages
 from django.contrib.auth.decorators import (
     login_required,
     permission_required,
 )
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
+from django.db.models import Q, CharField, TextField, ForeignKey
 from django.shortcuts import (
     get_object_or_404,
     redirect,
@@ -14,6 +18,8 @@ from django.shortcuts import (
 from horarios.models import Grupo
 
 from .forms import (
+    DisponibilidadProfesorForm,
+    CargaDocenteForm,
     AreaAcademicaForm,
     AsignaturaForm,
     AulaForm,
@@ -30,6 +36,8 @@ from .forms import (
 )
 
 from .models import (
+    DisponibilidadProfesor,
+    CargaDocente,
     AreaAcademica,
     Asignatura,
     Aula,
@@ -50,6 +58,36 @@ from .models import (
 
 
 MANTENEDORES = {
+    "disponibilidades": {
+        "modelo": DisponibilidadProfesor,
+        "form": DisponibilidadProfesorForm,
+        "titulo": "Disponibilidad de Profesores",
+        "singular": "Disponibilidad de Profesor",
+        "descripcion": "Administre los bloques semanales de disponibilidad por profesor y periodo.",
+        "columnas": [("Profesor", "profesor"), ("Periodo", "periodo"),
+                     ("Día", "get_dia_display"), ("Hora inicio", "hora_inicio"), ("Hora término", "hora_fin")],
+        "crear_url": "disponibilidad_crear", "editar_url": "disponibilidad_editar",
+        "eliminar_url": "disponibilidad_eliminar", "listado_url": "disponibilidades_profesores",
+        "perm_add": "academico.add_disponibilidadprofesor",
+        "perm_change": "academico.change_disponibilidadprofesor",
+        "perm_delete": "academico.delete_disponibilidadprofesor",
+        "mostrar_estado": True,
+        "queryset": lambda: DisponibilidadProfesor.objects.select_related("profesor", "periodo").all(),
+    },
+    "cargas_docentes": {
+        "modelo": CargaDocente,
+        "form": CargaDocenteForm,
+        "titulo": "Carga Docente",
+        "singular": "Carga Docente",
+        "descripcion": "Administre las horas cronológicas semanales asignadas por profesor y periodo.",
+        "columnas": [("Profesor", "profesor"), ("Periodo", "periodo"), ("Horas semanales", "horas_asignadas")],
+        "crear_url": "carga_docente_crear", "editar_url": "carga_docente_editar",
+        "eliminar_url": "carga_docente_eliminar", "listado_url": "cargas_docentes",
+        "perm_add": "academico.add_cargadocente", "perm_change": "academico.change_cargadocente",
+        "perm_delete": "academico.delete_cargadocente",
+        "mostrar_estado": True,
+        "queryset": lambda: CargaDocente.objects.select_related("profesor", "periodo").all(),
+    },
     # ======================================================
     # PROFESORES
     # ======================================================
@@ -597,6 +635,9 @@ def obtener_valor(
     if valor is None:
         return "—"
 
+    if isinstance(valor, time):
+        return valor.strftime("%H:%M")
+
     # Fechas
     if hasattr(
         valor,
@@ -639,6 +680,24 @@ def listado_generico(
     config = MANTENEDORES[clave]
 
     objetos = config["queryset"]()
+    total_registros = objetos.count()
+    busqueda = request.GET.get("q", "").strip()[:200]
+    if busqueda:
+        modelo = config["modelo"]
+        campos = []
+        for field in modelo._meta.concrete_fields:
+            if isinstance(field, (CharField, TextField)): campos.append(field.name)
+            elif isinstance(field, ForeignKey):
+                campos.extend(f"{field.name}__{f.name}" for f in field.related_model._meta.concrete_fields if isinstance(f, (CharField, TextField)))
+        for palabra in busqueda.split()[:10]:
+            consulta = Q()
+            for campo in campos: consulta |= Q(**{campo+"__icontains": palabra})
+            # Semestre tiene un número con choices, no un campo nombre.
+            if modelo is Semestre:
+                numeros = [valor for valor, etiqueta in modelo._meta.get_field("numero").choices if palabra.casefold() == str(etiqueta).casefold() or palabra == str(valor)]
+                consulta |= Q(numero__in=numeros)
+            objetos = objetos.filter(consulta) if consulta.children else objetos.none()
+        objetos = objetos.distinct()
 
     registros = []
 
@@ -668,10 +727,13 @@ def listado_generico(
         )
 
     context = {
+        "clave_mantenedor": clave,
         "titulo": config["titulo"],
         "descripcion": config["descripcion"],
         "columnas": [columna[0] for columna in config["columnas"]],
         "registros": registros,
+        "total_registros": total_registros, "busqueda": busqueda,
+        "listado_url": config["listado_url"],
         "crear_url": config["crear_url"],
         "editar_url": config["editar_url"],
         "eliminar_url": config["eliminar_url"],
@@ -865,6 +927,10 @@ def eliminar_generico(
 
         try:
 
+            # El FK del plan hacia programa es CASCADE: evitar borrar planes
+            # académicos silenciosamente desde la confirmación genérica.
+            if isinstance(objeto, ProgramaAcademico) and PlanEstudioAsignatura.objects.filter(programa=objeto).exists():
+                raise ProtectedError("El programa tiene planes de estudio asociados.", [objeto])
             objeto.delete()
 
         except (
@@ -917,6 +983,10 @@ def eliminar_generico(
 def mantenedores(
     request,
 ):
+
+    from usuarios.roles import puede_dashboard, puede_mantenedores
+    if not puede_dashboard(request.user) and not puede_mantenedores(request.user):
+        raise PermissionDenied
 
     return render(
         request,
@@ -1819,3 +1889,51 @@ def grupo_eliminar(
         "grupos",
         grupo_id,
     )
+
+
+@login_required
+@permission_required("academico.view_disponibilidadprofesor", raise_exception=True)
+def disponibilidades_profesores(request):
+    return listado_generico(request, "disponibilidades")
+
+
+@login_required
+@permission_required("academico.add_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_crear(request):
+    return crear_generico(request, "disponibilidades")
+
+
+@login_required
+@permission_required("academico.change_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_editar(request, objeto_id):
+    return editar_generico(request, "disponibilidades", objeto_id)
+
+
+@login_required
+@permission_required("academico.delete_disponibilidadprofesor", raise_exception=True)
+def disponibilidad_eliminar(request, objeto_id):
+    return eliminar_generico(request, "disponibilidades", objeto_id)
+
+
+@login_required
+@permission_required("academico.view_cargadocente", raise_exception=True)
+def cargas_docentes(request):
+    return listado_generico(request, "cargas_docentes")
+
+
+@login_required
+@permission_required("academico.add_cargadocente", raise_exception=True)
+def carga_docente_crear(request):
+    return crear_generico(request, "cargas_docentes")
+
+
+@login_required
+@permission_required("academico.change_cargadocente", raise_exception=True)
+def carga_docente_editar(request, objeto_id):
+    return editar_generico(request, "cargas_docentes", objeto_id)
+
+
+@login_required
+@permission_required("academico.delete_cargadocente", raise_exception=True)
+def carga_docente_eliminar(request, objeto_id):
+    return eliminar_generico(request, "cargas_docentes", objeto_id)

@@ -23,3 +23,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Base de datos y respaldos locales
+*.sqlite3
+backup_sqlite*.json
+
+# Variables de entorno
+.env
+.env.*

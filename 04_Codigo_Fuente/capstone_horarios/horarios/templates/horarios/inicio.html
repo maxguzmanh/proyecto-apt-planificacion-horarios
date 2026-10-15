@@ -1,147 +1,48 @@
 {% extends "horarios/base.html" %}
-
-{% block title %}
-Inicio | Planificación Docente
-{% endblock %}
-
-
+{% load horas %}
+{% block title %}Panel principal | UniPlan{% endblock %}
 {% block content %}
-
-<div class="app-page">
-
-
-    <!-- ==================================================
-         ENCABEZADO
-         ================================================== -->
-
-    <div class="workspace-header">
-
-        <div>
-
-            <div class="workspace-eyebrow">
-                PLANIFICACIÓN DOCENTE
-            </div>
-
-            <h1 class="workspace-title">
-                Panel principal
-            </h1>
-
-            <p class="workspace-description">
-                Administración y consulta de la
-                planificación académica institucional.
-            </p>
-
-        </div>
-
-    </div>
-
-
-    <!-- ==================================================
-         INDICADORES
-         ================================================== -->
-
-    <div class="metrics-grid">
-
-
-        <div class="metric-item">
-
-            <span class="metric-label">
-                Programas académicos
-            </span>
-
-            <strong class="metric-value">
-                {{ total_programas }}
-            </strong>
-
-        </div>
-
-
-        <div class="metric-item">
-
-            <span class="metric-label">
-                Profesores activos
-            </span>
-
-            <strong class="metric-value">
-                {{ total_profesores }}
-            </strong>
-
-        </div>
-
-
-        <div class="metric-item">
-
-            <span class="metric-label">
-                Aulas disponibles
-            </span>
-
-            <strong class="metric-value">
-                {{ total_aulas }}
-            </strong>
-
-        </div>
-
-
-        <div class="metric-item">
-
-            <span class="metric-label">
-                Horarios registrados
-            </span>
-
-            <strong class="metric-value">
-                {{ total_horarios }}
-            </strong>
-
-        </div>
-
-    </div>
-
-
-    <!-- ==================================================
-         ACCESO A PLANIFICACIÓN
-         ================================================== -->
-
-    <section class="planning-panel">
-
-        <div class="panel-heading-enterprise">
-
-            <div>
-
-                <span class="panel-kicker">
-                    PLANIFICACIÓN
-                </span>
-
-                <h2>
-                    Gestión de horarios
-                </h2>
-
-            </div>
-
-        </div>
-
-
-        <div class="planning-form">
-
-            <p class="workspace-description mt-0 mb-4">
-
-                Consulte los horarios académicos utilizando
-                filtros por Centro Tutorial, Sede, Facultad,
-                Programa Académico, Periodo, Semestre y Grupo.
-
-            </p>
-
-
-            <a
-                href="{% url 'planificacion' %}"
-                class="btn-enterprise-primary d-inline-block"
-            >
-                Ir a Planificación
-            </a>
-
-        </div>
-
-    </section>
-
+<div class="app-page dashboard-page">
+ <header class="workspace-header dashboard-header">
+  {% include "horarios/componentes/cabecera.html" with icono="dashboard" titulo="Panel principal" descripcion="Resumen operativo de la planificación académica." only %}
+  <form method="GET" class="dashboard-period"><label for="dashboard-periodo">Periodo académico</label><div class="dashboard-period-controls"><select id="dashboard-periodo" name="periodo" class="form-select">{% for p in periodos %}<option value="{{ p.pk }}" {% if periodo.pk == p.pk %}selected{% endif %}>{{ p.nombre }}</option>{% empty %}<option>No hay periodos activos</option>{% endfor %}</select>{% if periodos %}<button type="submit" class="btn btn-outline-primary">Consultar</button>{% endif %}</div></form>
+ </header>
+ <div class="dashboard-global-summary">
+  <p class="dashboard-scope">Registros activos · todos los periodos</p>
+  <div class="dashboard-kpis">
+   <article class="dashboard-kpi"><div class="dashboard-kpi-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="programas" only %}<span>Programas académicos activos</span></div><strong>{{ total_programas }}</strong></article>
+   <article class="dashboard-kpi"><div class="dashboard-kpi-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="profesores" only %}<span>Profesores activos</span></div><strong>{{ total_profesores }}</strong></article>
+   <article class="dashboard-kpi"><div class="dashboard-kpi-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="horarios" only %}<span>Horarios registrados</span></div><strong>{{ total_horarios }}</strong></article>
+   <article class="dashboard-kpi{% if total_pendientes %} dashboard-kpi-warning{% endif %}"><div class="dashboard-kpi-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="pendientes" only %}<span>Horarios con aula pendiente</span></div><strong>{{ total_pendientes }}</strong></article>
+  </div>
+ </div>
+ {% if periodo %}
+ <div class="dashboard-main-grid">
+  <section class="dashboard-panel dashboard-state">
+   <div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="estado" only %}<div><span class="panel-kicker">RESUMEN OPERATIVO · {{ periodo.nombre }}</span><h2>Estado de planificación</h2></div></div>
+   {% for completos in estados %}{% if completos.nombre == 'Horarios completos' %}
+    {% for pendientes in estados %}{% if pendientes.nombre == 'Aula pendiente' %}
+     {% with total=completos.valor|add:pendientes.valor %}
+     <div class="dashboard-state-primary"><div><strong>{{ completos.valor }}</strong><span>Horarios completos</span></div><p>de <strong>{{ total }}</strong> horarios activos en el periodo</p></div>
+     {% if total %}{% widthratio completos.valor total 100 as avance %}<div class="dashboard-progress-heading"><span>Asignación de aulas</span><strong>{{ avance }} %</strong></div><div class="dashboard-progress" role="progressbar" aria-label="Horarios con aula asignada" aria-valuenow="{{ avance }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ avance }}%"></span></div>{% else %}<p class="dashboard-empty">No hay horarios activos en este periodo.</p>{% endif %}
+     {% endwith %}
+    {% endif %}{% endfor %}
+   {% endif %}{% endfor %}
+   <div class="dashboard-state-secondary">{% for e in estados %}{% if e.nombre == 'Ofertas sin horario' or e.nombre == 'Profesores con carga' %}<div><strong>{{ e.valor }}</strong><span>{{ e.nombre }}</span></div>{% endif %}{% endfor %}</div>
+  </section>
+  <section class="dashboard-panel dashboard-pending-summary">
+   <div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="atencion" only %}<div><span class="panel-kicker">ATENCIÓN · {{ periodo.nombre }}</span><h2>Pendientes</h2></div></div>
+   <dl class="dashboard-pending-rows">{% for e in estados %}{% if e.nombre == 'Aula pendiente' or e.nombre == 'Ofertas sin horario' or e.nombre == 'Profesores sin carga' or e.nombre == 'Profesores sin disponibilidad' %}<div class="{% if e.valor %}is-pending{% else %}is-clear{% endif %}"><dt><span aria-hidden="true">{% if e.valor %}!{% else %}✓{% endif %}</span>{{ e.nombre }}</dt><dd>{{ e.valor }}</dd></div>{% endif %}{% endfor %}</dl>
+  </section>
+ </div>
+ <div class="dashboard-detail-grid">
+  <section class="dashboard-panel"><div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="espacios" only %}<div><span class="panel-kicker">ASIGNACIÓN DE ESPACIOS</span><h2>Horarios con aula pendiente</h2></div></div><div class="dashboard-items">{% for item in pendientes %}<article class="dashboard-item"><strong>{{ item.horario.oferta.asignatura.nombre }}</strong><span>{{ item.horario.oferta.profesor }}</span><span>{{ item.horario.get_dia_display }} · {{ item.horario.hora_inicio|time:'H:i' }}–{{ item.horario.hora_fin|time:'H:i' }}</span><span>{{ item.horario.sede.nombre }}</span><a href="{{ item.url }}">Ver en planificación <span aria-hidden="true">→</span></a></article>{% empty %}<p class="dashboard-empty dashboard-success"><span aria-hidden="true">✓ </span>Todos los horarios tienen aula asignada.</p>{% endfor %}</div></section>
+  <section class="dashboard-panel"><div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="docentes" only %}<div><span class="panel-kicker">CARGA Y DISPONIBILIDAD</span><h2>Estado docente</h2></div></div><div class="dashboard-items">{% for d in docentes_atencion %}<article class="dashboard-item {% if d.problema %}dashboard-item-danger{% endif %}"><strong>{{ d.profesor }}</strong><span>{% if d.carga %}{{ d.planificadas|horas_compactas }} / {{ d.carga.horas_asignadas|horas_compactas }} h · {{ d.pendientes|horas_compactas }} h pendientes{% else %}Carga docente no registrada{% endif %}</span><p class="dashboard-teacher-reasons">{{ d.razones|join:' · ' }}</p></article>{% empty %}<p class="dashboard-empty dashboard-success"><span aria-hidden="true">✓ </span>Todos los docentes tienen carga y disponibilidad registradas.</p><p class="dashboard-scope">No hay docentes que requieran atención.</p>{% endfor %}{% if total_atencion > 6 %}<p class="dashboard-scope">Se muestran 6 de {{ total_atencion }} docentes que requieren atención.</p>{% endif %}</div></section>
+ </div>
+ {% else %}<p class="dashboard-empty">No hay un periodo activo para consultar el estado docente.</p>{% endif %}
+ <div class="dashboard-lower-grid">
+  {% if periodo %}<section class="dashboard-panel dashboard-offers"><div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="ofertas" only %}<div><span class="panel-kicker">OPCIONES POR PLANIFICAR · {{ periodo.nombre }}</span><h2>Ofertas sin horario</h2></div></div><div class="dashboard-items dashboard-offer-list">{% for item in ofertas_pendientes %}<article class="dashboard-item"><div class="dashboard-offer-description"><strong>{{ item.oferta.asignatura.nombre }}</strong><span>{{ item.oferta.profesor }}</span><span>{{ item.programas|join:', '|default:'Sin programa relacionado' }} · {{ item.oferta.modalidad.nombre }}</span></div><a href="{{ item.url }}">Ir a Planificación <span aria-hidden="true">→</span></a></article>{% empty %}<p class="dashboard-empty dashboard-success">Todas las ofertas activas tienen horario.</p>{% endfor %}</div>{% for e in estados %}{% if e.nombre == 'Ofertas sin horario' and e.valor > 5 %}<div class="dashboard-panel-footer">{{ e.valor }} ofertas pendientes en el periodo · <a href="{% url 'planificacion' %}">Continuar en planificación →</a></div>{% endif %}{% endfor %}</section>{% endif %}
+  <section class="dashboard-panel dashboard-actions"><div class="dashboard-panel-heading">{% include "horarios/componentes/icono_dashboard.html" with tipo="acciones" only %}<div><span class="panel-kicker">ACCESOS</span><h2>Acciones rápidas</h2></div></div><nav class="dashboard-action-list" aria-label="Acciones rápidas">{% for a in acciones %}<a href="{% url a.ruta %}" class="dashboard-action"><span class="dashboard-action-label">{% include "horarios/componentes/icono_dashboard.html" with tipo=a.ruta only %}{{ a.nombre }}</span><span aria-hidden="true">→</span></a>{% endfor %}</nav><div class="dashboard-catalogue-summary"><span>{{ total_aulas }} aulas activas</span><span>{{ total_ofertas_sin_horario }} ofertas sin horario</span><small>Todos los periodos</small></div></section>
+ </div>
 </div>
-
 {% endblock %}

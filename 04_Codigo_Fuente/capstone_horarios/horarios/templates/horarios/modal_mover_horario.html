@@ -1,0 +1,24 @@
+<div class="modal fade" id="mover-horario-modal" tabindex="-1" aria-labelledby="mover-horario-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="mover-horario-titulo">Confirmar cambios</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancelar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fw-semibold">¿Está seguro de realizar los cambios?</p>
+                <dl class="offer-confirmation-details">
+                    <div><dt>Asignatura / oferta</dt><dd id="mover-asignatura"></dd></div>
+                    <div><dt>Profesor</dt><dd id="mover-profesor"></dd></div>
+                    <div><dt>Aula actual</dt><dd id="mover-aula"></dd></div>
+                    <div><dt>Horario original</dt><dd id="mover-original"></dd></div>
+                    <div><dt>Nuevo horario</dt><dd id="mover-nuevo"></dd></div>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button id="mover-confirmar" type="button" class="btn-enterprise-primary">Confirmar cambios</button>
+            </div>
+        </div>
+    </div>
+</div>

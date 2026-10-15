@@ -12,22 +12,32 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
 
-load_dotenv()
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-js7enrm&$zd=3hxxtui#0ie87#(zn2502dt@9m)@kqjtk1))f#"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+if not SECRET_KEY:
+    if DEBUG:
+        # Development-only ephemeral key; set SECRET_KEY for stable sessions.
+        SECRET_KEY = get_random_secret_key()
+    else:
+        raise ImproperlyConfigured("Configure SECRET_KEY in the environment.")
 
 ALLOWED_HOSTS = []
 
@@ -68,6 +78,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "academico.context_processors.menu_mantenedores",
             ],
         },
     },
@@ -82,11 +93,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "uniplan_db",
-        "USER": "uniplan_user",
-        "PASSWORD": os.environ.get("UNIPLAN_DB_PASSWORD"),
-        "HOST": "localhost",
-        "PORT": "5432",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -137,8 +148,8 @@ MAILERS = {
     },
 }
 
-LOGIN_URL = "/accounts/login/"
+LOGIN_URL = "login"
 
-LOGIN_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "inicio"
 
-LOGOUT_REDIRECT_URL = "/accounts/login/"
+LOGOUT_REDIRECT_URL = "login"

@@ -1,323 +1,116 @@
 {% extends "horarios/base.html" %}
-{% load static %}
-
-{% block title %}
-Planificación de Horarios
-{% endblock %}
-
-
+{% load static horas %}
+{% block title %}Planificación | UniPlan{% endblock %}
 {% block content %}
-
-<div class="app-page">
-
-
-    <!-- ==================================================
-         ENCABEZADO
-         ================================================== -->
-
+<div class="app-page planning-workspace">
     <div class="workspace-header">
-
-        <div>
-
-            <div class="workspace-eyebrow">
-                PLANIFICACIÓN DOCENTE
-            </div>
-
-            <h1 class="workspace-title">
-                Planificación de Horarios
-            </h1>
-
-            <p class="workspace-description">
-                Consulte y gestione la programación académica
-                aplicando los filtros correspondientes.
-            </p>
-
-        </div>
+        {% include "horarios/componentes/cabecera.html" with icono="calendario" titulo="Espacio de planificación" descripcion="Seleccione el contexto académico y consulte la programación semanal." only %}
 
     </div>
 
-
-    <!-- ==================================================
-         FILTROS
-         ================================================== -->
-
-    <section class="planning-panel mb-4">
-
+    <section class="planning-panel planning-filter-panel" aria-labelledby="titulo-filtros">
         <div class="panel-heading-enterprise">
-
-            <div>
-
-                <span class="panel-kicker">
-                    CONTEXTO ACADÉMICO
-                </span>
-
-                <h2>
-                    Filtros de planificación
-                </h2>
-
-            </div>
-
+            <div><span class="panel-kicker">CONTEXTO ACADÉMICO</span><h2 id="titulo-filtros">Filtros de planificación</h2></div>
         </div>
-
-
-        <form
-            id="filtros-planificacion"
-            method="GET"
-            action="{% url 'planificacion' %}"
-            class="planning-form"
-
-            data-selected-centro="{{ centro_id }}"
-            data-selected-sede="{{ sede_id }}"
-            data-selected-facultad="{{ facultad_id }}"
-            data-selected-programa="{{ programa_id }}"
-            data-selected-periodo="{{ periodo_id }}"
-            data-selected-semestre="{{ semestre_id }}"
-            data-selected-grupo="{{ grupo_id }}"
-        >
-
-            <div class="enterprise-form-grid">
-
-
-                <!-- CENTRO -->
-
+        <form id="filtros-planificacion" method="GET" action="{% url 'planificacion' %}" class="planning-form"
+              data-selected-centro="{{ centro_id }}" data-selected-sede="{{ sede_id }}"
+              data-selected-facultad="{{ facultad_id }}" data-selected-programa="{{ programa_id }}"
+              data-selected-periodo="{{ periodo_id }}" data-selected-semestre="{{ semestre_id }}"
+              data-url-facultades="{% url 'cargar_facultades' %}" data-url-programas="{% url 'cargar_programas' %}"
+              data-url-sedes="{% url 'cargar_sedes' %}"
+              data-url-periodos="{% url 'cargar_periodos' %}" data-url-semestres="{% url 'cargar_semestres' %}">
+            <div class="planning-horizontal-filters">
                 <div class="enterprise-field">
-
-                    <label for="centro">
-                        Centro Tutorial
-                    </label>
-
-                    <select
-                        id="centro"
-                        name="centro"
-                        class="form-select"
-                        required
-                    >
-
-                        <option value="">
-                            Seleccione un Centro Tutorial...
-                        </option>
-
-                        {% for item in centros %}
-
-                            <option value="{{ item.id }}">
-                                {{ item.nombre }}
-                            </option>
-
-                        {% endfor %}
-
+                    <label for="centro">Centro Tutorial</label>
+                    <select id="centro" name="centro" class="form-select" required>
+                        <option value="">Seleccione un Centro Tutorial...</option>
+                        {% for item in centros %}<option value="{{ item.id }}" {% if centro_id == item.id|stringformat:"s" %}selected{% endif %}>{{ item.nombre }}</option>{% endfor %}
                     </select>
-
                 </div>
-
-
-                <!-- FACULTAD -->
-
                 <div class="enterprise-field">
-
-                    <label for="facultad">
-                        Facultad
-                    </label>
-
-                    <select
-                        id="facultad"
-                        name="facultad"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione una facultad...
-                        </option>
-
-                    </select>
-
+                    <label for="sede">Sede</label>
+                    <select id="sede" name="sede" class="form-select" required disabled aria-describedby="sede-ayuda"><option value="">Seleccione una sede...</option></select>
+                    <p id="sede-ayuda" class="form-help mt-1 mb-0">Selecciona la sede correspondiente a esta planificación.</p>
                 </div>
-
-
-                <!-- PROGRAMA -->
-
                 <div class="enterprise-field">
-
-                    <label for="programa">
-                        Programa Académico
-                    </label>
-
-                    <select
-                        id="programa"
-                        name="programa"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un programa...
-                        </option>
-
-                    </select>
-
+                    <label for="facultad">Facultad</label>
+                    <select id="facultad" name="facultad" class="form-select" required disabled><option value="">Seleccione una facultad...</option></select>
                 </div>
-
-
-                <!-- PERIODO -->
-
                 <div class="enterprise-field">
-
-                    <label for="periodo">
-                        Periodo Académico
-                    </label>
-
-                    <select
-                        id="periodo"
-                        name="periodo"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un periodo...
-                        </option>
-
-                    </select>
-
+                    <label for="programa">Programa Académico</label>
+                    <select id="programa" name="programa" class="form-select" required disabled><option value="">Seleccione un programa...</option></select>
                 </div>
-
-
-                <!-- SEMESTRE -->
-
                 <div class="enterprise-field">
-
-                    <label for="semestre">
-                        Semestre
-                    </label>
-
-                    <select
-                        id="semestre"
-                        name="semestre"
-                        class="form-select"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Seleccione un semestre...
-                        </option>
-
-                    </select>
-
+                    <label for="periodo">Periodo Académico</label>
+                    <select id="periodo" name="periodo" class="form-select" required disabled><option value="">Seleccione un periodo...</option></select>
                 </div>
-
-
-                <!-- SEDE OPCIONAL -->
-
-                <div class="enterprise-field">
-
-                    <label for="sede">
-                        Sede
-                        <span class="text-secondary fw-normal">
-                            (opcional)
-                        </span>
-                    </label>
-
-                    <select
-                        id="sede"
-                        name="sede"
-                        class="form-select"
-                        disabled
-                    >
-
-                        <option value="">
-                            Todas las sedes
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- GRUPO OPCIONAL -->
-
-                <div class="enterprise-field field-wide">
-
-                    <label for="grupo">
-                        Grupo
-                        <span class="text-secondary fw-normal">
-                            (opcional)
-                        </span>
-                    </label>
-
-                    <select
-                        id="grupo"
-                        name="grupo"
-                        class="form-select"
-                        disabled
-                    >
-
-                        <option value="">
-                            Todos los grupos
-                        </option>
-
-                    </select>
-
-                </div>
-
             </div>
-
-
-            <!-- ==================================================
-                 ACCIONES
-                 ================================================== -->
-
             <div class="planning-actions">
-
-                <div class="form-help">
-
-                    Si no selecciona Sede o Grupo,
-                    la planificación mostrará todas las
-                    sedes y grupos disponibles para el
-                    contexto académico seleccionado.
-
-                </div>
-
-
+                <div class="form-help">Complete los cinco filtros del contexto y seleccione el semestre en el panel académico.</div>
                 <div class="d-flex gap-2">
-
-                    <a
-                        href="{% url 'planificacion' %}"
-                        class="btn btn-outline-secondary"
-                    >
-                        Limpiar filtros
-                    </a>
-
-
-                    <button
-                        type="submit"
-                        class="btn-enterprise-primary"
-                    >
-                        Aplicar filtros
-                    </button>
+                    <a href="{% url 'planificacion' %}" class="btn btn-outline-secondary">Limpiar filtros</a>
 
                 </div>
-
             </div>
-
         </form>
-
     </section>
 
-
-    <!-- ==================================================
-         SIN FILTROS COMPLETOS
-         ================================================== -->
-
+    <div class="planning-workspace-grid">
+        <aside class="planning-panel academic-panel" aria-labelledby="titulo-academico">
+            <div class="panel-heading-enterprise">
+                <div><span class="panel-kicker">PLAN DE ESTUDIO</span><h2 id="titulo-academico">Panel académico</h2></div>
+            </div>
+            <div class="planning-form">
+                <div class="enterprise-field">
+                    <label for="semestre">Semestre</label>
+                    <select id="semestre" name="semestre" form="filtros-planificacion" class="form-select" required disabled>
+                        <option value="">Seleccione un semestre...</option>
+                    </select>
+                    <p class="form-help mt-2">Seleccione un semestre para consultar automáticamente sus asignaturas.</p>
+                </div>
+                <div class="academic-list-heading"><h3>Asignaturas del semestre</h3><span>{{ asignaturas_semestre|length }}</span></div>
+                <div class="academic-subject-list">
+                    {% for item in asignaturas_semestre %}
+                    <details class="academic-subject-card">
+                        <summary>
+                            <strong>{{ item.plan.asignatura.nombre }}</strong>
+                            <span class="subject-code">{{ item.plan.asignatura.codigo }} · {{ item.plan.creditos }} créditos</span>
+                        </summary>
+                        <div class="academic-subject-content">
+                            <div class="subject-section-label">Profesores disponibles</div>
+                            {% for docente in item.profesores %}
+                            <div class="subject-offers">
+                                {% for oferta in docente.ofertas %}
+                                <div class="subject-offer-option teacher-compact-card{% if perms.horarios.add_horario and oferta.profesor.activo %} offer-drag-card{% endif %}"
+                                     tabindex="0" role="group" data-offer-id="{{ oferta.pk }}" data-oferta-id="{{ oferta.pk }}"
+                                     data-asignatura="{{ item.plan.asignatura.nombre }}" data-profesor="{{ docente.profesor }}"
+                                     data-horas="{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }}{% endif %}"
+                                     aria-label="{{ docente.profesor }}, {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} horas pendientes{% else %}Sin carga{% endif %}. {% if perms.horarios.add_horario and oferta.profesor.activo %}Arrastrar al calendario o {% endif %}doble clic o Enter para ver detalle."
+                                     title="{{ docente.profesor }} · {% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h pendientes{% else %}Sin carga{% endif %}&#10;{% for bloque in docente.disponibilidad|slice:':2' %}{{ bloque.get_dia_display }} {{ bloque.hora_inicio|time:'H:i' }}–{{ bloque.hora_fin|time:'H:i' }}{% if not forloop.last %} · {% endif %}{% empty %}Disponibilidad no registrada{% endfor %}{% if docente.disponibilidad|length > 2 %} · …{% endif %}&#10;Doble clic para ver detalle">
+                                    <span class="teacher-compact-name">{{ docente.profesor }}<small class="teacher-offer-modality">{{ oferta.modalidad.nombre }}</small></span>
+                                    <span class="teacher-hours-badge">{% if docente.horas_pendientes != None %}{{ docente.horas_pendientes|horas_compactas }} h{% else %}Sin carga{% endif %}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                            {% if not item.profesores %}<p class="subject-missing-data mt-3 mb-0">Sin profesor asignado</p>{% endif %}
+                        </div>
+                    </details>
+                    {% empty %}
+                    <div class="academic-empty-state">
+                        {% if filtros_completos %}No hay asignaturas activas en el plan de estudio para este semestre.{% else %}Seleccione el contexto académico y un semestre para ver las asignaturas.{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+        <section class="planning-calendar-panel" aria-label="Horario semanal">
     {% if not filtros_completos %}
 
         <div class="alert alert-warning">
 
-            Seleccione Centro Tutorial, Facultad,
-            Programa Académico, Periodo y Semestre
+            Seleccione Centro Tutorial, Sede, Facultad, Programa Académico,
+            Periodo y Semestre
             para visualizar la planificación.
 
         </div>
@@ -358,26 +151,7 @@ Planificación de Horarios
                             · Semestre
                             {{ semestre.get_numero_display }}
 
-                            {% if sede %}
-
-                                · {{ sede.nombre }}
-
-                            {% else %}
-
-                                · Todas las sedes
-
-                            {% endif %}
-
-
-                            {% if grupo %}
-
-                                · Grupo {{ grupo.codigo }}
-
-                            {% else %}
-
-                                · Todos los grupos
-
-                            {% endif %}
+                            · {{ sede.nombre }} · {{ periodo.nombre }}
 
                         </small>
 
@@ -388,52 +162,7 @@ Planificación de Horarios
                          ACCIONES
                          ================================================== -->
 
-                    <div class="d-flex gap-2">
 
-
-                        <!-- EXPORTAR -->
-
-                        {% if perms.horarios.view_horario %}
-
-                            {% if sede %}
-
-                                <a
-                                    href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}"
-                                    class="btn btn-outline-success"
-                                >
-                                    Exportar Excel
-                                </a>
-
-                            {% else %}
-
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-success"
-                                    disabled
-                                    title="Seleccione una sede para utilizar esta exportación."
-                                >
-                                    Exportar Excel
-                                </button>
-
-                            {% endif %}
-
-                        {% endif %}
-
-
-                        <!-- NUEVA ASIGNACIÓN -->
-
-                        {% if perms.horarios.add_horario %}
-
-                            <a
-                                href="{% url 'nueva_asignacion' %}?{{ request.GET.urlencode }}&volver_a={{ request.get_full_path|urlencode }}"
-                                class="btn btn-primary"
-                            >
-                                + Nueva asignación
-                            </a>
-
-                        {% endif %}
-
-                    </div>
 
                 </div>
 
@@ -448,8 +177,7 @@ Planificación de Horarios
 
                 <div class="alert alert-warning m-3 mb-0">
 
-                    No existen horarios registrados para
-                    la combinación de filtros seleccionada.
+                    No existen horarios registrados en este contexto de planificación.
 
                 </div>
 
@@ -460,248 +188,57 @@ Planificación de Horarios
                  CALENDARIO
                  ================================================== -->
 
-            <div class="card-body p-0">
-
-                <div class="calendar-scroll">
-
-                    <div
-                        class="weekly-calendar"
-                        style="
-                            --calendar-height:
-                            {{ altura_calendario }}px;
-                        "
-                    >
-
-
-                        <!-- HORA -->
-
-                        <div class="calendar-corner">
-                            Hora
-                        </div>
-
-
-                        <!-- DÍAS -->
-
-                        {% for dia in dias_calendario %}
-
-                            <div class="calendar-day-header">
-                                {{ dia.nombre }}
-                            </div>
-
-                        {% endfor %}
-
-
-                        <!-- HORAS -->
-
-                        <div
-                            class="calendar-hours"
-                            style="
-                                height:
-                                {{ altura_calendario }}px;
-                            "
-                        >
-
-                            {% for hora in horas_calendario %}
-
-                                <div
-                                    class="calendar-hour-label"
-                                    style="
-                                        top:
-                                        {{ hora.top }}px;
-                                    "
-                                >
-                                    {{ hora.texto }}
-                                </div>
-
-                            {% endfor %}
-
-                        </div>
-
-
-                        <!-- ==================================================
-                             COLUMNAS DE LOS DÍAS
-                             ================================================== -->
-
-                        {% for dia in dias_calendario %}
-
-                            <div
-                                class="calendar-day-column"
-                                style="
-                                    height:
-                                    {{ altura_calendario }}px;
-                                "
-                            >
-
-                                {% for bloque in dia.horarios %}
-
-
-                                    <!-- EDITABLE -->
-
-                                    {% if perms.horarios.change_horario %}
-
-                                        <a
-                                            href="{% url 'editar_asignacion' bloque.horario.id %}?volver_a={{ request.get_full_path|urlencode }}"
-                                            class="
-                                                calendar-event
-                                                {{ bloque.clase_evento }}
-                                            "
-                                            style="
-                                                top:
-                                                {{ bloque.top }}px;
-
-                                                height:
-                                                {{ bloque.altura }}px;
-                                            "
-                                        >
-
-                                            <div class="calendar-event-title">
-
-                                                {{ bloque.horario.oferta.asignatura.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-time">
-
-                                                {{ bloque.horario.hora_inicio|time:"H:i" }}
-                                                -
-                                                {{ bloque.horario.hora_fin|time:"H:i" }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.oferta.profesor }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.aula.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.aula.sede.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.oferta.modalidad.nombre }}
-
-                                                {% if bloque.es_transversal %}
-
-                                                    · Transversal
-
-                                                {% endif %}
-
-                                            </div>
-
-                                        </a>
-
-
-                                    <!-- SOLO LECTURA -->
-
-                                    {% else %}
-
-                                        <div
-                                            class="
-                                                calendar-event
-                                                {{ bloque.clase_evento }}
-                                            "
-                                            style="
-                                                top:
-                                                {{ bloque.top }}px;
-
-                                                height:
-                                                {{ bloque.altura }}px;
-                                            "
-                                        >
-
-                                            <div class="calendar-event-title">
-
-                                                {{ bloque.horario.oferta.asignatura.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-time">
-
-                                                {{ bloque.horario.hora_inicio|time:"H:i" }}
-                                                -
-                                                {{ bloque.horario.hora_fin|time:"H:i" }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.oferta.profesor }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.aula.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.aula.sede.nombre }}
-
-                                            </div>
-
-
-                                            <div class="calendar-event-info">
-
-                                                {{ bloque.horario.oferta.modalidad.nombre }}
-
-                                                {% if bloque.es_transversal %}
-
-                                                    · Transversal
-
-                                                {% endif %}
-
-                                            </div>
-
-                                        </div>
-
-                                    {% endif %}
-
-                                {% endfor %}
-
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
+            <div class="card-body">
+                <p class="text-secondary small">Bloques semanales recurrentes{% if perms.horarios.change_horario %} · Arrastre un horario para cambiar su día y hora{% endif %}.</p>
+                <div id="calendar-message" class="alert" role="status" aria-live="polite" hidden></div>
+                <form id="calendar-csrf" hidden>{% csrf_token %}</form>
+                <div class="uniplan-calendar-scroll">
+                    <div id="uniplan-calendar"
+                         data-delete-url="{% url 'eliminar_horario_calendario' %}"
+                         data-can-delete="{{ perms.horarios.delete_horario|yesno:'true,false' }}"
+                         data-occupations-base="{% url 'ocupaciones_oferta' 0 %}"
+                         data-events-url="{% url 'eventos_calendario' %}"
+                         data-move-url="{% url 'mover_horario' %}"
+                         data-create-url="{% url 'crear_horario_oferta' %}"
+                         data-resize-url="{% url 'redimensionar_horario' %}"
+                         data-assign-url="{% url 'asignar_aula_horario' %}"
+                         data-aulas-base="{% url 'aulas_horario_calendario' 0 %}"
+                         data-offer-base="{% url 'detalle_oferta_calendario' 0 %}"
+                         data-can-create="{{ perms.horarios.add_horario|yesno:'true,false' }}"
+                         data-filters="{{ filtros_query }}"
+                         data-reference-week="{{ semana_referencia }}"
+                         data-can-edit="{{ perms.horarios.change_horario|yesno:'true,false' }}"
+                         data-edit-base="{% url 'editar_asignacion' 0 %}"></div>
                 </div>
-
+                <noscript><div class="alert alert-warning mt-3">Active JavaScript para visualizar el calendario.</div></noscript>
             </div>
-
         </div>
 
     {% endif %}
 
+        </section>
+    </div>
 </div>
-
+{% if filtros_completos and perms.horarios.change_horario %}
+{% include "horarios/modal_mover_horario.html" %}
+{% include "horarios/modal_aula_horario.html" %}
+{% endif %}
+{% if filtros_completos %}
+{% include "horarios/modal_detalle_horario.html" %}
+{% include "horarios/modal_docente.html" %}
+{% if perms.horarios.delete_horario %}{% include "horarios/modal_eliminar_horario.html" %}{% endif %}
+<div id="calendar-context-menu" class="calendar-context-menu" role="menu" aria-label="Opciones del horario" hidden>
+    <button id="context-asignar-aula" type="button" role="menuitem" {% if not perms.horarios.change_horario %}hidden{% endif %}>Asignar aula</button>
+    <button id="context-ver-detalle" type="button" role="menuitem">Ver detalle</button>
+    {% if perms.horarios.delete_horario %}<button id="context-eliminar-horario" type="button" role="menuitem">Eliminar horario</button>{% endif %}
+</div>
+{% endif %}
 {% endblock %}
-
-
 {% block scripts %}
-
-<script
-    src="{% static 'horarios/js/selects.js' %}"
-></script>
-
+<script src="{% static 'horarios/js/selects.js' %}"></script>
+{% if filtros_completos %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.21/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.21/locales/es.global.min.js"></script>
+<script src="{% static 'horarios/js/calendario.js' %}"></script>
+{% endif %}
 {% endblock %}

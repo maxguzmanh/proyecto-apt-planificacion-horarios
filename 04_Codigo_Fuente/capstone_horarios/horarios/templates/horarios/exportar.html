@@ -1,0 +1,50 @@
+{% extends "horarios/base.html" %}
+{% load static %}
+{% block title %}Exportación de planificación | UniPlan{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.datatables.net/3.1.3/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/4.1.2/css/buttons.bootstrap5.min.css">
+{% endblock %}
+{% block content %}
+<div class="app-page export-workspace">
+    <header class="workspace-header">
+        {% include "horarios/componentes/cabecera.html" with icono="calendario" titulo="Exportación de planificación" descripcion="Consulta la planificación y exporta los resultados a Excel." only %}
+    </header>
+    <section class="planning-panel" aria-labelledby="exportar-alcance">
+        <div class="panel-heading-enterprise"><div><span class="panel-kicker">CONSULTA ACADÉMICA</span><h2 id="exportar-alcance">Filtros de planificación</h2></div></div>
+        <form method="GET" action="{% url 'exportacion_planificacion' %}" id="exportacion-form" class="planning-form"
+              data-url-facultades="{% url 'cargar_facultades' %}" data-url-programas="{% url 'cargar_programas' %}" data-url-semestres="{% url 'semestres_exportacion' %}">
+            {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="export-filters">
+                {% for field in form.visible_fields %}<div class="enterprise-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+                    {% if field.errors %}<div class="text-danger small mt-1" role="alert">{{ field.errors }}</div>{% endif %}
+                </div>{% endfor %}
+            </div>
+            {% for field in form.hidden_fields %}{{ field }}{% if field.errors %}<div class="text-danger small" role="alert">{{ field.errors }}</div>{% endif %}{% endfor %}
+            <div class="planning-actions"><span class="form-help">Periodo obligatorio. Los demás filtros son opcionales y permiten acotar la consulta.</span><button type="submit" name="filtrar" value="1" class="btn btn-primary" id="exportacion-filtrar">Filtrar</button></div>
+            <p id="exportacion-estado" class="form-help mt-2 mb-0" role="status" aria-live="polite"></p>
+        </form>
+    </section>
+    {% if filtrado %}
+    <section class="planning-panel export-results" aria-labelledby="exportacion-resultados">
+        <div class="panel-heading-enterprise"><div><span class="panel-kicker">RESULTADOS</span><h2 id="exportacion-resultados">Planificación filtrada</h2></div><div id="exportacion-header-actions" class="d-flex align-items-center gap-2">{% if filas %}<a href="{{ export_url }}" id="exportacion-fallback" class="btn btn-primary">Exportar Excel</a>{% endif %}</div></div>
+        <div class="planning-form">
+            <p id="exportacion-tabla-estado" class="form-help" role="status" aria-live="polite"></p>
+            <table id="exportacion-tabla" class="table table-hover align-middle" data-export-url="{{ export_url }}" data-row-count="{{ filas|length }}">
+                <thead><tr>{% for titulo in encabezados %}<th scope="col">{{ titulo }}</th>{% endfor %}</tr></thead>
+                <tbody>{% for fila in filas %}<tr>{% for valor in fila.valores %}<td{% if forloop.counter == 5 %} data-order="{{ fila.semestre_orden }}"{% elif forloop.counter == 11 %} data-order="{{ fila.dia_orden }}"{% endif %}>{{ valor }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+            </table>
+            <p class="form-help mt-2 mb-0">Excel incluye todos los resultados de la consulta y de la búsqueda de la tabla, aunque estén en otras páginas.</p>
+        </div>
+    </section>
+    {% else %}<p class="form-help mt-3">Selecciona un periodo y pulsa Filtrar para consultar la planificación.</p>{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.datatables.net/3.1.3/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/3.1.3/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/4.1.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/4.1.2/js/buttons.bootstrap5.min.js"></script>
+<script src="{% static 'horarios/js/exportacion.js' %}"></script>
+{% endblock %}

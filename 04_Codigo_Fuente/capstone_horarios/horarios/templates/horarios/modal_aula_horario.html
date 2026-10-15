@@ -1,0 +1,13 @@
+<div class="modal fade" id="asignar-aula-modal" tabindex="-1" aria-labelledby="asignar-aula-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+        <div class="modal-header"><h2 class="modal-title fs-5" id="asignar-aula-titulo">Asignar / cambiar aula</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancelar"></button></div>
+        <form id="asignar-aula-form">
+            <div class="modal-body">
+                <p id="aula-horario-resumen" class="small"></p>
+                <p id="aula-cargando" class="text-secondary small" role="status">Consultando aulas…</p>
+                <div class="enterprise-field"><label for="asignar-aula-select">Aula de la sede seleccionada</label><select id="asignar-aula-select" class="form-select" required disabled></select></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button id="asignar-aula-guardar" type="submit" class="btn-enterprise-primary" disabled>Guardar aula</button></div>
+        </form>
+    </div></div>
+</div>

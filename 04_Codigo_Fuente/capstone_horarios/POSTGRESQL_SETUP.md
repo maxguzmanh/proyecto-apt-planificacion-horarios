@@ -1,79 +1,50 @@
-# Configuración PostgreSQL - UniPlan
+# Configuraci?n PostgreSQL - UniPlan
 
-## 1. Motor de base de datos
+UniPlan utiliza PostgreSQL mediante Django ORM y psycopg. El entorno local
+verificado utiliza PostgreSQL 18 y puede administrarse con pgAdmin 4.
 
-UniPlan utiliza PostgreSQL como motor de base de datos.
+## Configuraci?n de entorno
 
-Configuración local utilizada:
+Desde `04_Codigo_Fuente/capstone_horarios/`, configure las siguientes variables
+en el entorno o en un archivo local `.env`:
 
-- PostgreSQL: 18
-- Administrador gráfico: pgAdmin 4
-- Base de datos: `uniplan_db`
-- Usuario de aplicación: `uniplan_user`
-- Host: `localhost`
-- Puerto: `5432`
+| Variable | Descripci?n | Valor predeterminado |
+|---|---|---|
+| `DB_NAME` | Nombre de la base PostgreSQL | Sin valor predeterminado |
+| `DB_USER` | Usuario autorizado en PostgreSQL | Sin valor predeterminado |
+| `DB_PASSWORD` | Contrase?a local del usuario | Sin valor predeterminado |
+| `DB_HOST` | Host del servidor | `localhost` |
+| `DB_PORT` | Puerto del servidor | `5432` |
+| `SECRET_KEY` | Clave secreta de Django, privada y estable | Sin clave fija |
 
-La contraseña de PostgreSQL no se almacena directamente en el código fuente.
+La base del entorno de desarrollo se denomina `uniplan_db`.
+`config/settings.py` carga `.env` desde el directorio del proyecto mediante
+`python-dotenv`. La configuraci?n integrada utiliza `DB_PASSWORD`, no
+`UNIPLAN_DB_PASSWORD`. Adapte las variables del entorno antes de ejecutarla.
 
----
+No publique contrase?as, claves ni el archivo `.env`; est? excluido por
+`.gitignore`. No use credenciales reales como ejemplos en la documentaci?n.
 
-## 2. Variable de entorno
+Con `DEBUG=True`, si no se configura `SECRET_KEY`, Django recibe una clave
+aleatoria por proceso para desarrollo; las sesiones pueden invalidarse al
+reiniciar. Configure una clave privada estable para conservarlas. Con
+`DEBUG=False`, la ausencia de `SECRET_KEY` impide iniciar la aplicaci?n.
+La configuraci?n actual sigue siendo de desarrollo, no de producci?n.
 
-Dentro de:
+## Dependencias y comprobaci?n
 
-`04_Codigo_Fuente/capstone_horarios/`
+Las dependencias est?n fijadas en `requirements.txt`, codificado en UTF-8.
+Incluyen `psycopg`, `psycopg-binary` y `python-dotenv`.
 
-se utiliza un archivo local `.env`.
-
-Ejemplo:
-
-```env
-UNIPLAN_DB_PASSWORD=CONTRASEÑA_LOCAL
-
-y continúa pegando esto debajo:
-
-```md
-El archivo `.env` está excluido del repositorio mediante `.gitignore`.
-
-No subir contraseñas a GitHub.
-
----
-
-## 3. Configuración de Django
-
-Django está configurado para utilizar PostgreSQL desde el archivo:
-
-`config/settings.py`
-
-La conexión utiliza:
-
-- Motor: PostgreSQL
-- Base de datos: `uniplan_db`
-- Usuario: `uniplan_user`
-- Host: `localhost`
-- Puerto: `5432`
-
-La contraseña se obtiene desde la variable:
-
-`UNIPLAN_DB_PASSWORD`
-
-No es necesario modificar nuevamente `settings.py`.
-
----
-
-## 4. Dependencias
-
-Las dependencias necesarias para PostgreSQL están registradas en:
-
-`requirements.txt`
-
-Entre ellas se utilizan:
-
-- `psycopg`
-- `psycopg-binary`
-- `python-dotenv`
-
-Para instalar las dependencias del proyecto:
+Desde el directorio del proyecto y con su entorno virtual activo:
 
 ```powershell
 python -m pip install -r requirements.txt
+python manage.py check
+python manage.py showmigrations
+python manage.py migrate --plan
+```
+
+Revise el plan y respalde los datos antes de aplicar migraciones a una base
+existente. La migraci?n de sede de horarios requiere poder determinar la sede
+de cada registro y rechaza casos sin informaci?n suficiente.

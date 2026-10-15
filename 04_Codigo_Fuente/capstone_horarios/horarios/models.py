@@ -1,5 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.utils import NotSupportedError
+
+from academico.choices import DiaSemana
 
 from academico.models import (
     Asignatura,
@@ -10,6 +13,7 @@ from academico.models import (
     Profesor,
     ProgramaAcademico,
     Semestre,
+    Sede,
 )
 
 # ==========================================================
@@ -100,6 +104,27 @@ class Grupo(models.Model):
 # ==========================================================
 
 
+class PlanificacionQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise NotSupportedError("Use save() para modificar planificación con validación y bloqueo.")
+
+    def bulk_update(self, *args, **kwargs):
+        raise NotSupportedError("Use save() para modificar planificación con validación y bloqueo.")
+
+    def bulk_create(self, *args, **kwargs):
+        raise NotSupportedError("Use save() para crear planificación con validación y bloqueo.")
+
+    def delete(self):
+        from .services import operacion_planificacion
+        campo = "oferta__profesor_id" if self.model.__name__ == "Horario" else "profesor_id"
+        ids = list(self.values_list(campo, flat=True))
+        with operacion_planificacion(ids):
+            actuales = set(self.values_list(campo, flat=True))
+            if not actuales.issubset(set(ids)):
+                raise ValidationError("La planificación cambió durante la operación. Recargue la página.")
+            return super().delete()
+
+
 class OfertaAcademica(models.Model):
     """
     Representa una asignatura efectivamente ofrecida
@@ -152,12 +177,26 @@ class OfertaAcademica(models.Model):
             "asignatura__nombre",
         ]
 
+    objects = PlanificacionQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        from .services import guardar_oferta
+        return guardar_oferta(self, *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from .services import eliminar_planificacion
+        return eliminar_planificacion(self, *args, **kwargs)
+
     def clean(self):
 
         if self.profesor_id and not self.profesor.activo:
             raise ValidationError(
                 {"profesor": ("El profesor seleccionado " "se encuentra inactivo.")}
             )
+
+        if self.profesor_id and self.periodo_id:
+            from .services import validar_oferta_docencia
+            validar_oferta_docencia(self)
 
     def __str__(self):
         return f"{self.asignatura} - " f"{self.profesor} - " f"{self.periodo}"
@@ -213,6 +252,10 @@ class OfertaGrupo(models.Model):
             "grupo__codigo",
         ]
 
+    def save(self, *args, **kwargs):
+        from .services import guardar_oferta_grupo
+        return guardar_oferta_grupo(self, *args, **kwargs)
+
     def clean(self):
 
         if not all(
@@ -245,15 +288,7 @@ class OfertaGrupo(models.Model):
 
 class Horario(models.Model):
 
-    DIAS = [
-        ("LU", "Lunes"),
-        ("MA", "Martes"),
-        ("MI", "Miércoles"),
-        ("JU", "Jueves"),
-        ("VI", "Viernes"),
-        ("SA", "Sábado"),
-        ("DO", "Domingo"),
-    ]
+    DIAS = DiaSemana.choices
 
     oferta = models.ForeignKey(
         OfertaAcademica,
@@ -261,10 +296,18 @@ class Horario(models.Model):
         related_name="horarios",
     )
 
+    sede = models.ForeignKey(
+        Sede,
+        on_delete=models.PROTECT,
+        related_name="horarios_planificados",
+    )
+
     aula = models.ForeignKey(
         Aula,
         on_delete=models.PROTECT,
         related_name="horarios",
+        null=True,
+        blank=True,
     )
 
     dia = models.CharField(
@@ -293,7 +336,20 @@ class Horario(models.Model):
     # VALIDACIONES
     # ======================================================
 
+    objects = PlanificacionQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        from .services import guardar_horario
+        return guardar_horario(self, *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from .services import eliminar_planificacion
+        return eliminar_planificacion(self, *args, **kwargs)
+
     def clean(self):
+
+        if self.aula_id and self.sede_id and self.aula.sede_id != self.sede_id:
+            raise ValidationError({"aula": "El aula debe pertenecer a la sede del horario."})
 
         # --------------------------------------------------
         # VALIDAR HORAS
@@ -309,6 +365,11 @@ class Horario(models.Model):
                 }
             )
 
+        if self.hora_inicio and self.hora_fin:
+            from .services import microsegundos_horario
+            if microsegundos_horario(self.hora_inicio, self.hora_fin) < 3600000000:
+                raise ValidationError({"hora_fin": "La duración mínima de un horario es 1 hora."})
+
         # --------------------------------------------------
         # SI FALTAN DATOS, NO CONTINUAMOS
         # --------------------------------------------------
@@ -316,7 +377,7 @@ class Horario(models.Model):
         if not all(
             [
                 self.oferta_id,
-                self.aula_id,
+                self.sede_id,
                 self.dia,
                 self.hora_inicio,
                 self.hora_fin,
@@ -373,7 +434,7 @@ class Horario(models.Model):
         # CONFLICTO DE AULA FÍSICA
         # --------------------------------------------------
 
-        if self.aula.tipo == Aula.TIPO_FISICA:
+        if self.aula_id and self.aula.tipo == Aula.TIPO_FISICA:
 
             conflicto_aula = (
                 Horario.objects.filter(
@@ -457,6 +518,9 @@ class Horario(models.Model):
                         )
                     }
                 )
+
+        from .services import validar_docencia
+        validar_docencia(self)
 
     # ======================================================
     # REPRESENTACIÓN

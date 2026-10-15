@@ -12,23 +12,7 @@ Mantenedores | Planificación Docente
 
     <div class="workspace-header">
 
-        <div>
-
-            <div class="workspace-eyebrow">
-                ADMINISTRACIÓN
-            </div>
-
-            <h1 class="workspace-title">
-                Mantenedores
-            </h1>
-
-            <p class="workspace-description">
-                Administre los datos institucionales,
-                académicos y recursos utilizados por
-                la planificación docente.
-            </p>
-
-        </div>
+        {% include "horarios/componentes/cabecera.html" with icono="mantenedores" titulo="Mantenedores" descripcion="Administre los datos institucionales, académicos y recursos utilizados por la planificación docente." only %}
 
     </div>
 
@@ -652,6 +636,35 @@ Mantenedores | Planificación Docente
 
         </div>
 
+    </section>
+
+
+    <section class="planning-panel mt-4">
+        <div class="panel-heading-enterprise">
+            <div><span class="panel-kicker">DOCENCIA</span><h2>Condiciones de planificación docente</h2></div>
+        </div>
+        <div class="planning-form">
+            <div class="row g-3">
+                <div class="col-lg-6 col-md-6">
+                    <div class="border p-4 h-100 d-flex flex-column" style="border-top: 3px solid #2563eb !important;">
+                        <div class="fw-semibold mb-2">Disponibilidad de Profesores</div>
+                        <p class="text-secondary small mb-3">Bloques semanales disponibles por profesor y periodo.</p>
+                        {% if perms.academico.view_disponibilidadprofesor %}
+                        <a href="{% url 'disponibilidades_profesores' %}" class="btn-enterprise-primary maintenance-card-button mt-auto">Administrar</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-6">
+                    <div class="border p-4 h-100 d-flex flex-column" style="border-top: 3px solid #2563eb !important;">
+                        <div class="fw-semibold mb-2">Carga Docente</div>
+                        <p class="text-secondary small mb-3">Horas cronológicas semanales asignadas por profesor y periodo.</p>
+                        {% if perms.academico.view_cargadocente %}
+                        <a href="{% url 'cargas_docentes' %}" class="btn-enterprise-primary maintenance-card-button mt-auto">Administrar</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
 </div>

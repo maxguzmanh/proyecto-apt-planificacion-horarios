@@ -311,3 +311,19 @@ urlpatterns = [
         name="grupo_eliminar",
     ),
 ]
+
+
+urlpatterns += [
+    path("disponibilidades/", views.disponibilidades_profesores, name="disponibilidades_profesores"),
+    path("disponibilidades/nuevo/", views.disponibilidad_crear, name="disponibilidad_crear"),
+    path("disponibilidades/<int:objeto_id>/editar/", views.disponibilidad_editar, name="disponibilidad_editar"),
+    path("disponibilidades/<int:objeto_id>/eliminar/", views.disponibilidad_eliminar, name="disponibilidad_eliminar"),
+]
+
+
+urlpatterns += [
+    path("cargas-docentes/", views.cargas_docentes, name="cargas_docentes"),
+    path("cargas-docentes/nuevo/", views.carga_docente_crear, name="carga_docente_crear"),
+    path("cargas-docentes/<int:objeto_id>/editar/", views.carga_docente_editar, name="carga_docente_editar"),
+    path("cargas-docentes/<int:objeto_id>/eliminar/", views.carga_docente_eliminar, name="carga_docente_eliminar"),
+]

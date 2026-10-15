@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <title>UniPlan</title>
+  <rect x="1" y="1" width="38" height="38" rx="6" fill="#E9F2FF"/>
+  <g fill="#0C66E4">
+    <rect x="9" y="9" width="6" height="6" rx="1"/>
+    <rect x="25" y="9" width="6" height="6" rx="1"/>
+    <rect x="9" y="17" width="6" height="6" rx="1"/>
+    <rect x="25" y="17" width="6" height="6" rx="1"/>
+    <path d="M9 25h6v2h10v-2h6v3a5 5 0 0 1-5 5H14a5 5 0 0 1-5-5v-3Z"/>
+  </g>
+  <rect x="17" y="9" width="6" height="6" rx="1" fill="#8FB8F6"/>
+</svg>

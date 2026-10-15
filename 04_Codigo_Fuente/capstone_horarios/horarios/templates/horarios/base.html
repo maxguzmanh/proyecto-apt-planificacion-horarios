@@ -27,6 +27,14 @@
     >
 
 
+    <link rel="icon" type="image/svg+xml" href="{% static 'horarios/img/uniplan.svg' %}">
+
+    {% block styles %}{% endblock %}
+
+    {% if mantenedores_abierto %}
+    <link rel="stylesheet" href="https://cdn.datatables.net/3.1.3/css/dataTables.bootstrap5.min.css">
+    {% endif %}
+
     <!-- CSS propio -->
 
     <link
@@ -44,165 +52,65 @@
          BARRA DE NAVEGACIÓN
          ================================================== -->
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-
-        <div class="container">
-
-
-            <!-- Nombre del sistema -->
-
-            <a
-                class="navbar-brand fw-semibold"
-                href="{% url 'inicio' %}"
-            >
-                Planificación de Horarios
-            </a>
-
-
-            <!-- Botón responsive -->
-
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarPrincipal"
-                aria-controls="navbarPrincipal"
-                aria-expanded="false"
-                aria-label="Mostrar navegación"
-            >
-
-                <span class="navbar-toggler-icon"></span>
-
-            </button>
-
-
-            <!-- Menú -->
-
-            <div
-                class="collapse navbar-collapse"
-                id="navbarPrincipal"
-            >
-
-                <ul class="navbar-nav ms-auto align-items-lg-center">
-
-
-                    <!-- Inicio -->
-
-                    <li class="nav-item">
-
-                        <a
-                            class="nav-link"
-                            href="{% url 'inicio' %}"
-                        >
-                            Inicio
-                        </a>
-
-                    </li>
-
-
-                    <!-- Planificación -->
-
-                    <li class="nav-item">
-
-                        <a
-                            class="nav-link"
-                            href="{% url 'inicio' %}"
-                        >
-                            Planificación
-                        </a>
-
-                    </li>
-
-
-                    <!-- Administración -->
-
-                    {% if request.user.is_staff %}
-
-                        <li class="nav-item">
-
-                            <a
-                                class="nav-link"
-                                href="/admin/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Administración
-                            </a>
-
-                        </li>
-
-                    {% endif %}
-
-
-                    <!-- Separador visual -->
-
-                    {% if request.user.is_authenticated %}
-
-                        <li class="nav-item d-none d-lg-block">
-
-                            <span class="nav-link text-secondary">
-                                |
-                            </span>
-
-                        </li>
-
-
-                        <!-- Usuario conectado -->
-
-                        <li class="nav-item">
-
-                            <span class="nav-link text-light">
-
-                                Usuario:
-                                <strong>
-                                    {{ request.user.username }}
-                                </strong>
-
-                            </span>
-
-                        </li>
-
-
-                        <!-- Cerrar sesión -->
-
-                        <li class="nav-item">
-
-                            <form
-                                method="POST"
-                                action="{% url 'logout' %}"
-                                class="d-inline"
-                            >
-
-                                {% csrf_token %}
-
-                                <button
-                                    type="submit"
-                                    class="btn nav-link border-0"
-                                >
-                                    Cerrar sesión
-                                </button>
-
-                            </form>
-
-                        </li>
-
-                    {% endif %}
-
-
-                </ul>
-
+    <a class="app-skip-link" href="#contenido-principal">Ir al contenido</a>
+    <aside class="app-sidebar" aria-label="Menú principal">
+        <a class="sidebar-brand" href="{% if portal_profesor %}{% url 'profesor_horario' %}{% else %}{% url 'inicio' %}{% endif %}"><span class="brand-lockup"><img src="{% static 'horarios/img/uniplan.svg' %}" width="32" height="32" alt="">UniPlan</span><span class="brand-caption">Planificación académica</span></a>
+        <nav class="sidebar-navigation" aria-label="Navegación">
+            {% if portal_profesor %}<a href="{% url 'profesor_horario' %}" class="is-active" aria-current="page">Mi horario</a>
+            {% elif not sidebar_solo_lectura %}
+            <a href="{% url 'inicio' %}" {% if request.resolver_match.url_name == 'inicio' %}class="is-active" aria-current="page"{% endif %}>Inicio</a>
+            <details id="sidebar-planificacion" class="sidebar-maintenance" {% if request.resolver_match.url_name == 'planificacion' or request.resolver_match.url_name == 'nueva_asignacion' or request.resolver_match.url_name == 'editar_asignacion' or request.resolver_match.url_name == 'eliminar_asignacion' or request.resolver_match.url_name == 'exportacion_planificacion' or request.resolver_match.url_name == 'exportar_excel' %}open{% endif %}>
+                <summary>Planificación <span class="sidebar-chevron" aria-hidden="true">▾</span></summary>
+                <nav class="sidebar-maintenance-links" aria-label="Planificación">
+                    <a href="{% url 'planificacion' %}" {% if request.resolver_match.url_name == 'planificacion' or request.resolver_match.url_name == 'nueva_asignacion' or request.resolver_match.url_name == 'editar_asignacion' or request.resolver_match.url_name == 'eliminar_asignacion' %}class="is-active" aria-current="page"{% endif %}>Gestionar horarios</a>
+                    {% if puede_exportar_planificacion %}<a href="{% url 'exportacion_planificacion' %}" {% if request.resolver_match.url_name == 'exportacion_planificacion' or request.resolver_match.url_name == 'exportar_excel' %}class="is-active" aria-current="page"{% endif %}>Exportar Excel</a>{% endif %}
+                </nav>
+            </details>
+            {% if menu_mantenedores %}
+            <details id="sidebar-mantenedores" class="sidebar-maintenance" {% if mantenedores_abierto %}open{% endif %}>
+                <summary>Mantenedores <span class="sidebar-chevron" aria-hidden="true">▾</span></summary>
+                <nav class="sidebar-maintenance-links" aria-label="Mantenedores">
+                    {% for opcion in menu_mantenedores %}<a href="{% url opcion.ruta %}" {% if opcion.activa %}class="is-active" aria-current="page"{% endif %}>{{ opcion.nombre }}</a>{% endfor %}
+                </nav>
+            </details>
+            {% endif %}
+            {% endif %}
+        </nav>
+        {% if request.user.is_authenticated %}
+        <div class="sidebar-account">
+            {% if portal_profesor %}
+            <div class="sidebar-professor-identity">
+                <span class="sidebar-professor-icon" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" width="25" height="25"><path d="m16 4 12 6-12 6L4 10l12-6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 13.2v4.3c0 2.5 3.1 4.5 7 4.5s7-2 7-4.5v-4.3M28 10v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="28" cy="19" r="1.2" fill="currentColor"/><path d="M8 28c.8-3.2 3.8-5 8-5s7.2 1.8 8 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span><small>Profesor actual</small><strong>{{ perfil_docente }}</strong></span>
             </div>
-
+            {% elif request.user.is_superuser %}
+            <div class="sidebar-admin-identity">
+                <span class="sidebar-admin-icon" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" width="23" height="23"><path d="M16 3.5 26 7v7.2c0 6.2-4.2 11.3-10 14.3-5.8-3-10-8.1-10-14.3V7l10-3.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m16 8.5 1.7 3.4 3.8.5-2.8 2.7.7 3.8-3.4-1.8-3.4 1.8.7-3.8-2.8-2.7 3.8-.5L16 8.5Z" fill="currentColor"/></svg>
+                </span>
+                <span><small>Administrador</small><strong>{{ request.user.username }}</strong></span>
+            </div>
+            {% else %}
+            <span class="sidebar-account-label"><svg class="sidebar-user-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Usuario actual</span>
+            <strong>{{ request.user.username }}</strong>
+            {% endif %}
+            {% if request.user.is_superuser and not portal_profesor %}<a class="sidebar-technical" href="{% url 'admin:index' %}" target="_blank" rel="noopener noreferrer">Administración técnica ↗</a>{% endif %}
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+            </form>
         </div>
-
-    </nav>
+        {% endif %}
+    </aside>
 
 
     <!-- ==================================================
          CONTENIDO PRINCIPAL
          ================================================== -->
 
-    <main class="container py-5">
+    <main id="contenido-principal" class="app-main" tabindex="-1">
 
         <!-- Mensajes del sistema -->
 
@@ -259,6 +167,12 @@
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
     </script>
+
+    {% if mantenedores_abierto %}
+    <script src="https://cdn.datatables.net/3.1.3/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/3.1.3/js/dataTables.bootstrap5.min.js"></script>
+    <script src="{% static 'horarios/js/mantenedores.js' %}"></script>
+    {% endif %}
 
 
     <!-- Scripts específicos de cada página -->

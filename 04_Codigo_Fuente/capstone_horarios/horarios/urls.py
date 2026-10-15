@@ -1,8 +1,25 @@
 from django.urls import path
 
-from . import views
+from . import views, profesor_views, exportacion_views
 
 urlpatterns = [
+    path("planificacion/exportar/", exportacion_views.exportacion_planificacion, name="exportacion_planificacion"),
+    path("ajax/exportacion/semestres/", exportacion_views.semestres_exportacion, name="semestres_exportacion"),
+    path("profesor/", profesor_views.profesor_inicio, name="profesor_inicio"),
+    path("profesor/horario/", profesor_views.profesor_horario, name="profesor_horario"),
+    path("profesor/horario/exportar-pdf/", profesor_views.profesor_horario_pdf, name="profesor_horario_pdf"),
+    path("profesor/calendario/eventos/", profesor_views.profesor_eventos, name="profesor_eventos"),
+    path("profesor/calendario/horarios/<int:horario_id>/detalle/", profesor_views.profesor_detalle, name="profesor_detalle"),
+    path("planificacion/calendario/ofertas/<int:oferta_id>/ocupaciones/", views.ocupaciones_oferta, name="ocupaciones_oferta"),
+    path("planificacion/calendario/eliminar/", views.eliminar_horario_calendario, name="eliminar_horario_calendario"),
+    path("planificacion/calendario/redimensionar/", views.redimensionar_horario, name="redimensionar_horario"),
+    path("planificacion/calendario/asignar-aula/", views.asignar_aula_horario, name="asignar_aula_horario"),
+    path("planificacion/calendario/horarios/<int:horario_id>/aulas/", views.aulas_horario_calendario, name="aulas_horario_calendario"),
+    path("ajax/modalidades/", views.cargar_modalidades, name="cargar_modalidades"),
+    path("planificacion/calendario/ofertas/<int:oferta_id>/", views.detalle_oferta_calendario, name="detalle_oferta_calendario"),
+    path("planificacion/calendario/crear/", views.crear_horario_oferta, name="crear_horario_oferta"),
+    path("planificacion/calendario/eventos/", views.eventos_calendario, name="eventos_calendario"),
+    path("planificacion/calendario/mover/", views.mover_horario, name="mover_horario"),
     path(
         "",
         views.inicio,
@@ -30,7 +47,7 @@ urlpatterns = [
     ),
     path(
         "planificacion/exportar-excel/",
-        views.exportar_excel,
+        exportacion_views.descargar_excel,
         name="exportar_excel",
     ),
     # Selects dependientes

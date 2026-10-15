@@ -308,7 +308,7 @@ Eliminar asignación | Planificación Docente
                         </div>
 
                         <div class="fw-semibold">
-                            {{ horario.aula.nombre }}
+                            {{ horario.aula.nombre|default:"Aula pendiente" }}
                         </div>
 
                     </div>
@@ -323,7 +323,7 @@ Eliminar asignación | Planificación Docente
                         </div>
 
                         <div class="fw-semibold">
-                            {{ horario.aula.sede.nombre }}
+                            {{ horario.sede.nombre }}
                         </div>
 
                     </div>

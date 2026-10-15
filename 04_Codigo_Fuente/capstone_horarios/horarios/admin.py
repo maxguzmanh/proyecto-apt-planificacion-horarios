@@ -1,4 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
+from django.http import HttpResponseRedirect
+from .services import operacion_planificacion, revalidar_oferta
+from .forms import HorarioAdminForm
 
 from .models import (
     Grupo,
@@ -71,8 +75,37 @@ class OfertaGrupoInline(admin.TabularInline):
 # ==========================================================
 
 
+class PlanificacionSeguraAdmin:
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method != "POST":
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        ids = set()
+        if object_id:
+            campo = "profesor_id" if self.model is OfertaAcademica else "oferta__profesor_id"
+            ids.update(self.model.objects.filter(pk=object_id).values_list(campo, flat=True))
+        if self.model is OfertaAcademica:
+            valor = request.POST.get("profesor", "")
+            if valor.isdigit():
+                ids.add(int(valor))
+        else:
+            valor = request.POST.get("oferta", "")
+            if valor.isdigit():
+                ids.update(OfertaAcademica.objects.filter(pk=int(valor)).values_list("profesor_id", flat=True))
+        try:
+            with operacion_planificacion(ids):
+                return super().changeform_view(request, object_id, form_url, extra_context)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+            return HttpResponseRedirect(request.path)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        if self.model is OfertaAcademica:
+            revalidar_oferta(form.instance)
+
+
 @admin.register(OfertaAcademica)
-class OfertaAcademicaAdmin(admin.ModelAdmin):
+class OfertaAcademicaAdmin(PlanificacionSeguraAdmin, admin.ModelAdmin):
 
     list_display = (
         "asignatura",
@@ -163,13 +196,15 @@ class OfertaGrupoAdmin(admin.ModelAdmin):
 
 
 @admin.register(Horario)
-class HorarioAdmin(admin.ModelAdmin):
+class HorarioAdmin(PlanificacionSeguraAdmin, admin.ModelAdmin):
+    form = HorarioAdminForm
 
     list_display = (
         "asignatura",
         "profesor",
         "grupos",
-        "aula",
+        "sede",
+        "aula_estado",
         "dia",
         "hora_inicio",
         "hora_fin",
@@ -191,7 +226,7 @@ class HorarioAdmin(admin.ModelAdmin):
     list_filter = (
         "oferta__periodo",
         "dia",
-        "aula__sede",
+        "sede",
         "oferta__modalidad",
         "activo",
     )
@@ -202,7 +237,12 @@ class HorarioAdmin(admin.ModelAdmin):
         "oferta__profesor",
         "oferta__periodo",
         "aula",
+        "sede",
     )
+
+    @admin.display(description="Aula")
+    def aula_estado(self, obj):
+        return obj.aula.nombre if obj.aula_id else "Aula pendiente"
 
     @admin.display(description="Asignatura")
     def asignatura(self, obj):

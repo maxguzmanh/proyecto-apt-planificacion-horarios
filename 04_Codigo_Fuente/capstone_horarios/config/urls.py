@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.urls import include, path
+from usuarios.views import acceso_no_configurado
 
 urlpatterns = [
+    path("acceso-no-configurado/", acceso_no_configurado, name="acceso_no_configurado"),
     # ======================================================
     # ADMINISTRACIÓN DJANGO
     # ======================================================
@@ -14,7 +16,7 @@ urlpatterns = [
     # ======================================================
     path(
         "accounts/",
-        include("django.contrib.auth.urls"),
+        include("usuarios.urls"),
     ),
     # ======================================================
     # MANTENEDORES
