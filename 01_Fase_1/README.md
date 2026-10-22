@@ -1,19 +1,32 @@
 # Fase 1
 
-Documentación y evidencias correspondientes a la definición inicial
-del Proyecto APT.
+Definición del Proyecto APT y evidencias individuales y grupales.
 
-## Índice de artefactos
+## Índice documental
 
-- [Ficha del Proyecto](02_Evidencias_Grupales/Ficha_del_Proyecto/)
-- [02 Acta de Constitución](02_Evidencias_Grupales/02_Acta_de_Constitucion/)
-- [03 Registro de Stakeholders](02_Evidencias_Grupales/03_Registro_de_Stakeholders/)
-- [04 Mapa de Actores](02_Evidencias_Grupales/04_Mapa_de_Actores/)
-- [05 Product Vision](02_Evidencias_Grupales/05_Product_Vision/)
-- [06 Product Goal](02_Evidencias_Grupales/06_Product_Goal/)
-- [07 Product Roadmap](02_Evidencias_Grupales/07_Product_Roadmap/)
-- [08 Requisitos Funcionales](02_Evidencias_Grupales/08_Requisitos_Funcionales/)
-- [09 Requisitos No Funcionales](02_Evidencias_Grupales/09_Requisitos_No_Funcionales/)
+### 01_Evidencias_Individuales
 
-Las carpetas de evidencias individuales, grupales y referencias históricas
-anteriores se conservan en sus ubicaciones originales.
+- [Ivan_Tobar/Tobar_Ivan_1.1_APT122_AutoevaluacionCompetenciasFase1.docx](01_Evidencias_Individuales/Ivan_Tobar/Tobar_Ivan_1.1_APT122_AutoevaluacionCompetenciasFase1.docx)
+- [Ivan_Tobar/Tobar_Ivan_1.2_APT122_DiarioReflexionFase1.docx](01_Evidencias_Individuales/Ivan_Tobar/Tobar_Ivan_1.2_APT122_DiarioReflexionFase1.docx)
+- [Ivan_Tobar/Tobar_Ivan_1.3_APT122_AutoevaluacionFase1.docx](01_Evidencias_Individuales/Ivan_Tobar/Tobar_Ivan_1.3_APT122_AutoevaluacionFase1.docx)
+- [Maximiliano_Guzman/Guzman_Maximiliano_1.1_APT122_AutoevaluacionCompetenciasFase1.docx](01_Evidencias_Individuales/Maximiliano_Guzman/Guzman_Maximiliano_1.1_APT122_AutoevaluacionCompetenciasFase1.docx)
+- [Maximiliano_Guzman/Guzman_Maximiliano_1.2_APT122_DiarioReflexionFase1.docx](01_Evidencias_Individuales/Maximiliano_Guzman/Guzman_Maximiliano_1.2_APT122_DiarioReflexionFase1.docx)
+- [Maximiliano_Guzman/Guzman_Maximiliano_1.3_APT122_AutoevaluacionFase1.docx](01_Evidencias_Individuales/Maximiliano_Guzman/Guzman_Maximiliano_1.3_APT122_AutoevaluacionFase1.docx)
+
+### 02_Evidencias_Grupales
+
+- [01_Ficha_del_Proyecto/Ficha_del_Proyecto_Capstone.docx](02_Evidencias_Grupales/01_Ficha_del_Proyecto/Ficha_del_Proyecto_Capstone.docx)
+- [02_Acta_de_Constitucion/UniPlan_Acta_de_Constitucion.docx](02_Evidencias_Grupales/02_Acta_de_Constitucion/UniPlan_Acta_de_Constitucion.docx)
+- [1.4_APT122_FormativaFase1.docx](02_Evidencias_Grupales/1.4_APT122_FormativaFase1.docx)
+- [1.5_GuiaEstudiante_Fase 1_Definicion Proyecto APT-2.docx](02_Evidencias_Grupales/1.5_GuiaEstudiante_Fase%201_Definicion%20Proyecto%20APT-2.docx)
+- [Definicion_Proyecto_APT/UniPlan_Guia_Fase1_Definicion_Proyecto_APT(1).docx](02_Evidencias_Grupales/Definicion_Proyecto_APT/UniPlan_Guia_Fase1_Definicion_Proyecto_APT%281%29.docx)
+- [PLANILLA DE EVALUACIÓN FASE 1 - Grupo 2.xlsx](02_Evidencias_Grupales/PLANILLA%20DE%20EVALUACI%C3%93N%20FASE%201%20-%20Grupo%202.xlsx)
+- [UniPlan_Presentacion_Fase1.pptx](02_Evidencias_Grupales/UniPlan_Presentacion_Fase1.pptx)
+
+### 03_Referencias
+
+- [README.md](03_Referencias/README.md)
+
+`03_Referencias/`: Evidencia histórica adicional fuera del esquema de Casa Central.
+
+Los documentos 1.3 se incorporan según su nombre de archivo por autorización expresa; ambas copias tienen contenido idéntico.
